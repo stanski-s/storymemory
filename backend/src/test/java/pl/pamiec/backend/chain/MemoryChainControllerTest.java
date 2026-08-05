@@ -1,0 +1,114 @@
+package pl.pamiec.backend.chain;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import pl.pamiec.backend.chain.dto.GeneratedCardSegment;
+import pl.pamiec.backend.chain.dto.GeneratedStoryChain;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class MemoryChainControllerTest {
+
+    private MockMvc mockMvc;
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @Autowired
+    private MemoryChainRepository chainRepository;
+
+    @MockitoBean
+    private StoryGeneratorEngine storyGeneratorEngine;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        chainRepository.deleteAll();
+
+        GeneratedStoryChain mockChain = new GeneratedStoryChain(List.of(
+            new GeneratedCardSegment(0, "perro", "A glowing neon perro dances on top of a giant sombrero.", "Surreal digital art of a glowing neon dog dancing on a giant hat"),
+            new GeneratedCardSegment(1, "gato", "Suddenly a floating space gato shoots lasers at the sombrero.", "Surreal art of a galactic cosmic cat shooting lasers in deep space")
+        ));
+
+        when(storyGeneratorEngine.generateStory(anyString(), anyString(), any())).thenReturn(mockChain);
+    }
+
+    @Test
+    void shouldCreateChainAndPersistToPostgres() throws Exception {
+        String jsonPayload = """
+            {
+                "topic": "Spanish Animals",
+                "targetLanguage": "Spanish",
+                "items": ["perro", "gato"]
+            }
+            """;
+
+        MvcResult result = mockMvc.perform(post("/api/chains")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonPayload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").exists())
+            .andExpect(jsonPath("$.status").value("GENERATING"))
+            .andReturn();
+
+        String responseStr = result.getResponse().getContentAsString();
+        String idStr = responseStr.substring(responseStr.indexOf("\"id\":\"") + 6, responseStr.indexOf("\",\"status\""));
+        UUID chainId = UUID.fromString(idStr);
+
+        // Wait briefly for virtual thread async generation to finish
+        Thread.sleep(1000);
+
+        MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
+        assertThat(chain.getStatus()).isEqualTo(ChainStatus.COMPLETED);
+        assertThat(chain.getCards()).hasSize(2);
+        assertThat(chain.getCards().get(0).getTargetItem()).isEqualTo("perro");
+        assertThat(chain.getCards().get(1).getTargetItem()).isEqualTo("gato");
+    }
+
+    @Test
+    void shouldSubscribeToSseStream() throws Exception {
+        MemoryChain chain = new MemoryChain("Spanish Animals", "Spanish", "perro,gato");
+        chain.setStatus(ChainStatus.COMPLETED);
+        chain = chainRepository.save(chain);
+
+        StoryCard card1 = new StoryCard(chain, 0, "perro", "Neon dog on sombrero", "Surreal neon dog prompt");
+        StoryCard card2 = new StoryCard(chain, 1, "gato", "Cosmic cat with lasers", "Surreal cosmic cat prompt");
+        chain.addCard(card1);
+        chain.addCard(card2);
+        chainRepository.save(chain);
+
+        MvcResult result = mockMvc.perform(get("/api/chains/" + chain.getId() + "/stream")
+                .accept(MediaType.TEXT_EVENT_STREAM_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String sseOutput = result.getResponse().getContentAsString();
+        assertThat(sseOutput).contains("event:CHAIN_CREATED");
+        assertThat(sseOutput).contains("event:CARD_GENERATED");
+        assertThat(sseOutput).contains("perro");
+        assertThat(sseOutput).contains("gato");
+        assertThat(sseOutput).contains("event:CHAIN_COMPLETED");
+    }
+}
