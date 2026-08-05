@@ -1,3 +1,31 @@
+# Build & Dependency Outputs
+target/
+**/target/
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+**/dist/
+*.log
+
+# IDE & Editor files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Agent & Temp files
 .agents
 skills-lock.json
 piękno
+.issues
+.scratch
+docs
+AGENTS.md
+CONTEXT.md
+SPEC.md
+HELP.md
+
