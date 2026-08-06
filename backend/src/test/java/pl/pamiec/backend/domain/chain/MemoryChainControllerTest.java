@@ -1,4 +1,4 @@
-package pl.pamiec.backend.chain;
+package pl.pamiec.backend.domain.chain;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,8 +12,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import pl.pamiec.backend.chain.dto.GeneratedCardSegment;
-import pl.pamiec.backend.chain.dto.GeneratedStoryChain;
+import pl.pamiec.backend.domain.chain.dto.GeneratedCardSegment;
+import pl.pamiec.backend.domain.chain.dto.GeneratedStoryChain;
+import pl.pamiec.backend.domain.chain.image.ImageGeneratorEngine;
+import pl.pamiec.backend.storage.ObjectStorageService;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +44,12 @@ class MemoryChainControllerTest {
     @MockitoBean
     private StoryGeneratorEngine storyGeneratorEngine;
 
+    @MockitoBean
+    private ImageGeneratorEngine imageGeneratorEngine;
+
+    @MockitoBean
+    private ObjectStorageService objectStorageService;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
@@ -53,6 +61,8 @@ class MemoryChainControllerTest {
         ));
 
         when(storyGeneratorEngine.generateStory(anyString(), anyString(), any())).thenReturn(mockChain);
+        when(imageGeneratorEngine.generateImage(anyString())).thenReturn(new byte[]{1, 2, 3});
+        when(objectStorageService.uploadImage(any(), any(), anyString())).thenReturn("http://localhost:9000/pamiec-media/images/test.png");
     }
 
     @Test
@@ -91,9 +101,9 @@ class MemoryChainControllerTest {
         assertThat(chain.getStatus()).isEqualTo(ChainStatus.COMPLETED);
         assertThat(chain.getCards()).hasSize(2);
         assertThat(chain.getCards().get(0).getTargetItem()).isEqualTo("perro");
+        assertThat(chain.getCards().get(0).getImageUrl()).isEqualTo("http://localhost:9000/pamiec-media/images/test.png");
         assertThat(chain.getCards().get(1).getTargetItem()).isEqualTo("gato");
     }
-
 
     @Test
     void shouldSubscribeToSseStream() throws Exception {
@@ -114,7 +124,7 @@ class MemoryChainControllerTest {
 
         String sseOutput = result.getResponse().getContentAsString();
         assertThat(sseOutput).contains("event:CHAIN_CREATED");
-        assertThat(sseOutput).contains("event:CARD_GENERATED");
+        assertThat(sseOutput).contains("event:CARD_IMAGE_GENERATED");
         assertThat(sseOutput).contains("perro");
         assertThat(sseOutput).contains("gato");
         assertThat(sseOutput).contains("event:CHAIN_COMPLETED");
