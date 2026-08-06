@@ -1,6 +1,4 @@
-package pl.pamiec.backend.chain.dto;
-
-import java.util.List;
+package pl.pamiec.backend.domain.chain.dto;
 
 public record GeneratedCardSegment(
     int sequenceIndex,

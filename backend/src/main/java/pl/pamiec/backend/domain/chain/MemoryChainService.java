@@ -1,12 +1,13 @@
-package pl.pamiec.backend.chain;
+package pl.pamiec.backend.domain.chain;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import pl.pamiec.backend.chain.dto.*;
+import pl.pamiec.backend.domain.chain.dto.*;
+import pl.pamiec.backend.domain.chain.image.ImageGeneratorEngine;
+import pl.pamiec.backend.storage.ObjectStorageService;
 
 import java.io.IOException;
 import java.util.*;
@@ -22,19 +23,25 @@ public class MemoryChainService {
     private final MemoryChainRepository chainRepository;
     private final StoryCardRepository cardRepository;
     private final StoryGeneratorEngine storyGeneratorEngine;
+    private final ImageGeneratorEngine imageGeneratorEngine;
+    private final ObjectStorageService objectStorageService;
     private final Map<UUID, List<SseEmitter>> emittersMap = new ConcurrentHashMap<>();
 
     public MemoryChainService(MemoryChainRepository chainRepository,
                                StoryCardRepository cardRepository,
-                               StoryGeneratorEngine storyGeneratorEngine) {
+                               StoryGeneratorEngine storyGeneratorEngine,
+                               ImageGeneratorEngine imageGeneratorEngine,
+                               ObjectStorageService objectStorageService) {
         this.chainRepository = chainRepository;
         this.cardRepository = cardRepository;
         this.storyGeneratorEngine = storyGeneratorEngine;
+        this.imageGeneratorEngine = imageGeneratorEngine;
+        this.objectStorageService = objectStorageService;
     }
 
     public CreateChainResponse createChain(CreateChainRequest request) {
         String rawItemsStr = String.join(",", request.items());
-        String effectiveLang = request.getEffectiveLanguage();
+        String effectiveLang = request.targetLanguage();
         MemoryChain chain = new MemoryChain(request.userId(), request.topic(), effectiveLang, rawItemsStr);
         chain.setStatus(ChainStatus.GENERATING);
         MemoryChain savedChain = chainRepository.save(chain);
@@ -71,15 +78,8 @@ public class MemoryChainService {
                 emitter.send(SseEmitter.event().name("CHAIN_CREATED").data(createdData, MediaType.APPLICATION_JSON));
 
                 for (StoryCard card : chain.getCards()) {
-                    Map<String, Object> cardData = Map.of(
-                        "chainId", chain.getId(),
-                        "cardId", card.getId(),
-                        "sequenceIndex", card.getSequenceIndex(),
-                        "targetItem", card.getTargetItem(),
-                        "storySegment", card.getStorySegment(),
-                        "imagePrompt", card.getImagePrompt()
-                    );
-                    emitter.send(SseEmitter.event().name("CARD_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
+                    Map<String, Object> cardData = buildCardEventData(chain.getId(), card);
+                    emitter.send(SseEmitter.event().name("CARD_IMAGE_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
                 }
 
                 if (chain.getStatus() == ChainStatus.COMPLETED) {
@@ -117,14 +117,14 @@ public class MemoryChainService {
             emitEvent(chainId, "CHAIN_CREATED", Map.of(
                 "chainId", chainId,
                 "topic", request.topic(),
-                "language", request.getEffectiveLanguage(),
-                "targetLanguage", request.getEffectiveLanguage(),
+                "language", request.targetLanguage(),
+                "targetLanguage", request.targetLanguage(),
                 "totalItems", request.items().size(),
                 "status", "GENERATING"
             ));
 
             GeneratedStoryChain generatedChain = storyGeneratorEngine.generateStory(
-                request.topic(), request.getEffectiveLanguage(), request.items()
+                request.topic(), request.targetLanguage(), request.items()
             );
 
             MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
@@ -137,19 +137,20 @@ public class MemoryChainService {
                     chain.addCard(savedCard);
                     createdCards.add(savedCard);
 
-                    Map<String, Object> cardData = Map.of(
-                        "chainId", chainId,
-                        "cardId", savedCard.getId(),
-                        "sequenceIndex", savedCard.getSequenceIndex(),
-                        "targetItem", savedCard.getTargetItem(),
-                        "storySegment", savedCard.getStorySegment(),
-                        "imagePrompt", savedCard.getImagePrompt()
-                    );
-                    emitEvent(chainId, "CARD_GENERATED", cardData);
+                    // Generate surreal illustration via Hugging Face & upload to S3/MinIO
+                    byte[] imageBytes = imageGeneratorEngine.generateImage(savedCard.getImagePrompt());
+                    if (imageBytes != null && imageBytes.length > 0) {
+                        String imageUrl = objectStorageService.uploadImage(savedCard.getId(), imageBytes, "image/png");
+                        if (imageUrl != null && !imageUrl.isBlank()) {
+                            savedCard.setImageUrl(imageUrl);
+                            cardRepository.save(savedCard);
+                        }
+                    }
+
+                    Map<String, Object> cardData = buildCardEventData(chainId, savedCard);
                     emitEvent(chainId, "CARD_IMAGE_GENERATED", cardData);
                 }
             }
-
 
             chain.setStatus(ChainStatus.COMPLETED);
             chainRepository.save(chain);
@@ -171,6 +172,20 @@ public class MemoryChainService {
             emitEvent(chainId, "ERROR", Map.of("chainId", chainId, "message", e.getMessage()));
             completeEmitters(chainId);
         }
+    }
+
+    private Map<String, Object> buildCardEventData(UUID chainId, StoryCard card) {
+        Map<String, Object> cardData = new HashMap<>();
+        cardData.put("chainId", chainId);
+        cardData.put("cardId", card.getId());
+        cardData.put("sequenceIndex", card.getSequenceIndex());
+        cardData.put("targetItem", card.getTargetItem());
+        cardData.put("storySegment", card.getStorySegment());
+        cardData.put("imagePrompt", card.getImagePrompt());
+        if (card.getImageUrl() != null) {
+            cardData.put("imageUrl", card.getImageUrl());
+        }
+        return cardData;
     }
 
     private void emitEvent(UUID chainId, String eventName, Object data) {
@@ -209,4 +224,3 @@ public class MemoryChainService {
         }
     }
 }
-

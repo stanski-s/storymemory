@@ -1,4 +1,4 @@
-package pl.pamiec.backend.chain.dto;
+package pl.pamiec.backend.domain.chain.dto;
 
 import java.util.UUID;
 

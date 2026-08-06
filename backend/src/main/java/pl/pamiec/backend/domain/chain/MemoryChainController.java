@@ -1,13 +1,13 @@
-package pl.pamiec.backend.chain;
+package pl.pamiec.backend.domain.chain;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import pl.pamiec.backend.chain.dto.CreateChainRequest;
-import pl.pamiec.backend.chain.dto.CreateChainResponse;
-import pl.pamiec.backend.chain.dto.MemoryChainDto;
+import pl.pamiec.backend.domain.chain.dto.CreateChainRequest;
+import pl.pamiec.backend.domain.chain.dto.CreateChainResponse;
+import pl.pamiec.backend.domain.chain.dto.MemoryChainDto;
 
 import java.util.UUID;
 
@@ -24,31 +24,18 @@ public class MemoryChainController {
 
     @PostMapping
     public ResponseEntity<CreateChainResponse> createChain(@RequestBody CreateChainRequest request) {
-        if (request.items() == null || request.items().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
         CreateChainResponse response = chainService.createChain(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChainQuery(@RequestParam(name = "chainId", required = false) UUID chainId) {
-        return chainService.subscribeToStream(chainId);
+    @GetMapping("/{id}")
+    public ResponseEntity<MemoryChainDto> getChain(@PathVariable("id") UUID id) {
+        MemoryChainDto chainDto = chainService.getChain(id);
+        return ResponseEntity.ok(chainDto);
     }
 
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChainProgress(@PathVariable UUID id) {
+    public SseEmitter subscribeToStream(@PathVariable("id") UUID id) {
         return chainService.subscribeToStream(id);
     }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<MemoryChainDto> getChain(@PathVariable UUID id) {
-        try {
-            MemoryChainDto dto = chainService.getChain(id);
-            return ResponseEntity.ok(dto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
 }
-

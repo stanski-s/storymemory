@@ -1,4 +1,4 @@
-package pl.pamiec.backend.chain;
+package pl.pamiec.backend.domain.chain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

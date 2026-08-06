@@ -1,4 +1,4 @@
-package pl.pamiec.backend.chain;
+package pl.pamiec.backend.domain.chain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -15,12 +15,12 @@ public class MemoryChain {
     private UUID id;
 
     @Column(name = "user_id")
-    private String userId;
+    private UUID userId;
 
     @Column(nullable = false)
     private String topic;
 
-    @Column(name = "language", nullable = false)
+    @Column(nullable = false)
     private String language;
 
     @Column(name = "raw_items", nullable = false, columnDefinition = "TEXT")
@@ -28,10 +28,10 @@ public class MemoryChain {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ChainStatus status;
+    private ChainStatus status = ChainStatus.PENDING;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
 
     @OneToMany(mappedBy = "chain", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("sequenceIndex ASC")
@@ -39,35 +39,28 @@ public class MemoryChain {
 
     public MemoryChain() {}
 
-    public MemoryChain(String userId, String topic, String language, String rawItems) {
-        this.userId = (userId != null && !userId.isBlank()) ? userId : "guest";
+    public MemoryChain(UUID userId, String topic, String language, String rawItems) {
+        this.userId = userId;
         this.topic = topic;
         this.language = language;
         this.rawItems = rawItems;
-        this.status = ChainStatus.PENDING;
-        this.createdAt = Instant.now();
     }
 
-
     public MemoryChain(String topic, String language, String rawItems) {
-        this(null, topic, language, rawItems);
+        this(UUID.fromString("00000000-0000-0000-0000-000000000000"), topic, language, rawItems);
     }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
 
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
-
-    // Alias for backward compatibility if needed
-    public String getTargetLanguage() { return language; }
-    public void setTargetLanguage(String targetLanguage) { this.language = targetLanguage; }
 
     public String getRawItems() { return rawItems; }
     public void setRawItems(String rawItems) { this.rawItems = rawItems; }
@@ -76,7 +69,6 @@ public class MemoryChain {
     public void setStatus(ChainStatus status) { this.status = status; }
 
     public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
     public List<StoryCard> getCards() { return cards; }
     public void setCards(List<StoryCard> cards) { this.cards = cards; }
