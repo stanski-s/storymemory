@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useMemoryChainStream } from "@/hooks/useMemoryChainStream";
-import { Sparkles, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, ArrowLeft } from "lucide-react";
+import { StoryCardCarousel } from "@/components/StoryCardCarousel";
+import { Sparkles, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, ArrowLeft, LayoutGrid, Layers } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
@@ -10,6 +12,7 @@ interface Props {
 
 export function ChainStreamView({ chainId }: Props) {
   const stream = useMemoryChainStream(chainId);
+  const [viewMode, setViewMode] = useState<"CAROUSEL" | "LIST">("CAROUSEL");
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
@@ -22,11 +25,33 @@ export function ChainStreamView({ chainId }: Props) {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Generator</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <button
+              onClick={() => setViewMode("CAROUSEL")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors font-medium ${
+                viewMode === "CAROUSEL" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Cards Story</span>
+            </button>
+            <button
+              onClick={() => setViewMode("LIST")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors font-medium ${
+                viewMode === "LIST" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>List View</span>
+            </button>
+          </div>
+
           {stream.status === "GENERATING" && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/30 text-purple-300">
               <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-              Live Streaming SSE
+              Live Stream
             </span>
           )}
           {stream.status === "COMPLETED" && (
@@ -38,7 +63,7 @@ export function ChainStreamView({ chainId }: Props) {
           {stream.status === "FAILED" && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 border border-red-500/30 text-red-300">
               <AlertCircle className="w-3.5 h-3.5" />
-              Generation Error
+              Error
             </span>
           )}
         </div>
@@ -88,54 +113,75 @@ export function ChainStreamView({ chainId }: Props) {
         </div>
       )}
 
-      {/* Story Cards List */}
-      <div className="space-y-6">
-        {stream.cards.map((card) => (
-          <div
-            key={card.sequenceIndex}
-            className="group relative p-6 rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10"
-          >
-            <div className="flex items-center justify-between mb-4">
+      {/* Primary Display: TikTok Swipeable Carousel or List View */}
+      {viewMode === "CAROUSEL" ? (
+        <StoryCardCarousel cards={stream.cards} isGenerating={stream.status === "GENERATING"} />
+      ) : (
+        <div className="space-y-6">
+          {stream.cards.map((card) => (
+            <div
+              key={card.sequenceIndex}
+              className="group relative p-6 rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10 flex flex-col md:flex-row gap-6 items-center"
+            >
+              {/* Card Image Thumbnail or Skeleton */}
+              <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 flex-shrink-0 flex items-center justify-center">
+                {card.imageUrl ? (
+                  <img
+                    src={card.imageUrl}
+                    alt={card.targetItem}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-500 flex flex-col items-center">
+                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin mb-2" />
+                    <span>Generating image...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-xl bg-purple-950/80 border border-purple-800/50 text-xs font-semibold text-purple-300">
+                    Step {card.sequenceIndex + 1}
+                  </span>
+                  <span className="px-3.5 py-1 rounded-xl bg-indigo-950/80 border border-indigo-800/50 text-sm font-bold text-indigo-200 tracking-wide">
+                    {card.targetItem}
+                  </span>
+                </div>
+
+                <p className="text-base text-slate-100 leading-relaxed font-sans font-medium">
+                  {card.storySegment}
+                </p>
+
+                <div className="flex items-start gap-2 p-3 rounded-2xl bg-slate-950/50 border border-slate-800/60 text-xs text-slate-400">
+                  <ImageIcon className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-300">Visual Prompt: </span>
+                    <span className="italic">{card.imagePrompt}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Loading Skeleton Card */}
+          {stream.status === "GENERATING" && (
+            <div className="p-6 rounded-3xl bg-slate-900/30 border border-dashed border-slate-800/80 animate-pulse space-y-4">
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded-xl bg-purple-950/80 border border-purple-800/50 text-xs font-semibold text-purple-300">
-                  Step {card.sequenceIndex + 1}
-                </span>
-                <span className="px-3.5 py-1 rounded-xl bg-indigo-950/80 border border-indigo-800/50 text-sm font-bold text-indigo-200 tracking-wide">
-                  {card.targetItem}
-                </span>
+                <div className="w-16 h-6 rounded-xl bg-slate-800" />
+                <div className="w-24 h-6 rounded-xl bg-slate-800" />
+              </div>
+              <div className="h-4 bg-slate-800 rounded w-3/4" />
+              <div className="h-4 bg-slate-800 rounded w-1/2" />
+              <div className="flex items-center gap-2 pt-2">
+                <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                <span className="text-xs text-slate-400">LLM is crafting next surreal segment...</span>
               </div>
             </div>
-
-            <p className="text-lg text-slate-100 leading-relaxed font-sans mb-4">
-              {card.storySegment}
-            </p>
-
-            <div className="flex items-start gap-2 p-3 rounded-2xl bg-slate-950/50 border border-slate-800/60 text-xs text-slate-400">
-              <ImageIcon className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold text-slate-300">Surreal Visual Prompt: </span>
-                <span className="italic">{card.imagePrompt}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Loading Skeleton Card */}
-        {stream.status === "GENERATING" && (
-          <div className="p-6 rounded-3xl bg-slate-900/30 border border-dashed border-slate-800/80 animate-pulse space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-16 h-6 rounded-xl bg-slate-800" />
-              <div className="w-24 h-6 rounded-xl bg-slate-800" />
-            </div>
-            <div className="h-4 bg-slate-800 rounded w-3/4" />
-            <div className="h-4 bg-slate-800 rounded w-1/2" />
-            <div className="flex items-center gap-2 pt-2">
-              <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-              <span className="text-xs text-slate-400">LLM is crafting next surreal segment...</span>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+

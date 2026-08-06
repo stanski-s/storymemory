@@ -57,13 +57,15 @@ export function useMemoryChainStream(chainId: string | null) {
           targetItem: data.targetItem,
           storySegment: data.storySegment,
           imagePrompt: data.imagePrompt,
+          imageUrl: data.imageUrl || null,
         };
 
         setState((prev) => {
           const existing = prev.cards.find((c) => c.sequenceIndex === newCard.sequenceIndex);
+          const updatedCard = existing ? { ...existing, ...newCard, imageUrl: newCard.imageUrl || existing.imageUrl } : newCard;
           const cards = existing
-            ? prev.cards.map((c) => (c.sequenceIndex === newCard.sequenceIndex ? newCard : c))
-            : [...prev.cards, newCard].sort((a, b) => a.sequenceIndex - b.sequenceIndex);
+            ? prev.cards.map((c) => (c.sequenceIndex === newCard.sequenceIndex ? updatedCard : c))
+            : [...prev.cards, updatedCard].sort((a, b) => a.sequenceIndex - b.sequenceIndex);
 
           const progress = prev.totalItems > 0 ? Math.min(100, Math.round((cards.length / prev.totalItems) * 100)) : 50;
 
@@ -76,6 +78,26 @@ export function useMemoryChainStream(chainId: string | null) {
         });
       } catch (err) {
         console.error("Error parsing CARD_GENERATED event", err);
+      }
+    });
+
+    eventSource.addEventListener("CARD_IMAGE_GENERATED", (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        const sequenceIndex = data.sequenceIndex;
+        const imageUrl = data.imageUrl;
+
+        setState((prev) => {
+          const cards = prev.cards.map((c) => {
+            if (c.sequenceIndex === sequenceIndex) {
+              return { ...c, imageUrl: imageUrl || c.imageUrl };
+            }
+            return c;
+          });
+          return { ...prev, cards };
+        });
+      } catch (err) {
+        console.error("Error parsing CARD_IMAGE_GENERATED event", err);
       }
     });
 
