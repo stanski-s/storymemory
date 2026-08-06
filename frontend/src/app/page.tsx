@@ -1,4 +1,5 @@
 import { HealthCheck } from "@/components/HealthCheck";
+import { ChainCreateForm } from "@/components/ChainCreateForm";
 import { Sparkles, Brain, Layers, Zap, ArrowRight, ShieldCheck, Database, LayoutGrid } from "lucide-react";
 
 export default function Home() {
@@ -12,7 +13,7 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              Pamięć <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-normal">v0.1.0</span>
+              Pamięć <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-normal">v0.2.0</span>
             </h1>
             <p className="text-xs text-gray-400">Multimodal Memory Chain</p>
           </div>
@@ -21,13 +22,13 @@ export default function Home() {
         <div className="flex items-center space-x-4">
           <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 bg-gray-900/60 px-3 py-1.5 rounded-full border border-gray-800">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Java 25 & Next.js 16
+            Groq AI & Spring AI SSE
           </span>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="space-y-6 text-center md:text-left py-6">
+      <section className="space-y-6 text-center md:text-left py-4">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-950/60 border border-indigo-800/50 text-indigo-300 text-xs font-medium">
           <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
           AI-Powered Mnemonic Storytelling Engine
@@ -54,9 +55,14 @@ export default function Home() {
           </div>
           <div className="px-4 py-2.5 rounded-xl glass-panel text-xs text-gray-300 flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-pink-400" />
-            Next.js App Router & Tailwind CSS
+            Spring AI SSE & Next.js Stream
           </div>
         </div>
+      </section>
+
+      {/* Chain Generator Form */}
+      <section className="py-4">
+        <ChainCreateForm />
       </section>
 
       {/* Infrastructure & Health Verification Section */}
@@ -105,11 +111,11 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="pt-8 border-t border-gray-800/80 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500 gap-4">
-        <p>© 2026 Pamięć — Multimodal Memory Chain. Java 25 & Spring Boot 4 + Next.js.</p>
+        <p>© 2026 Pamięć — Multimodal Memory Chain. Spring Boot 3.4 & Next.js 15.</p>
         <div className="flex space-x-6">
           <span>PostgreSQL DB</span>
-          <span>Flyway V1 Schema</span>
-          <span>Virtual Threads (Loom)</span>
+          <span>Flyway V2 Schema</span>
+          <span>Groq AI & Spring AI SSE</span>
         </div>
       </footer>
     </main>

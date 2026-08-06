@@ -12,14 +12,15 @@ interface HealthData {
 
 export function HealthCheck() {
   const [health, setHealth] = useState<HealthData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchHealth = async () => {
     setLoading(true);
     setError(null);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(`${baseUrl}/api/health`, { cache: "no-store" });
       if (!res.ok) {
         throw new Error(`HTTP error ${res.status}`);
@@ -36,6 +37,7 @@ export function HealthCheck() {
   };
 
   useEffect(() => {
+    setMounted(true);
     fetchHealth();
   }, []);
 
@@ -54,7 +56,7 @@ export function HealthCheck() {
 
         <button
           onClick={fetchHealth}
-          disabled={loading}
+          disabled={!mounted || loading}
           className="p-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 hover:text-white transition-all disabled:opacity-50"
           title="Refresh Health Status"
           id="refresh-health-btn"
@@ -67,7 +69,7 @@ export function HealthCheck() {
         {/* Status Box */}
         <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            {loading ? (
+            {!mounted || loading ? (
               <Activity className="w-5 h-5 text-yellow-400 animate-pulse" />
             ) : error ? (
               <XCircle className="w-5 h-5 text-rose-500" />
@@ -77,7 +79,7 @@ export function HealthCheck() {
             <div>
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Status</p>
               <p className={`text-sm font-semibold ${error ? "text-rose-400" : "text-emerald-400"}`}>
-                {loading ? "Checking..." : error ? "OFFLINE" : health?.status || "HEALTHY"}
+                {!mounted || loading ? "Checking..." : error ? "OFFLINE" : health?.status || "HEALTHY"}
               </p>
             </div>
           </div>
@@ -90,7 +92,7 @@ export function HealthCheck() {
             <div>
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Virtual Threads</p>
               <p className="text-sm font-semibold text-purple-300">
-                {health?.virtualThreadsEnabled ? "ENABLED (Loom)" : "Disabled / Unknown"}
+                {mounted && health?.virtualThreadsEnabled ? "ENABLED (Loom)" : "Disabled / Unknown"}
               </p>
             </div>
           </div>
@@ -101,7 +103,7 @@ export function HealthCheck() {
           <div>
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Last Sync</p>
             <p className="text-xs font-mono text-gray-300 truncate max-w-[180px]">
-              {error ? error : health?.timestamp ? new Date(health.timestamp).toLocaleTimeString() : "--"}
+              {error ? error : (mounted && health?.timestamp) ? new Date(health.timestamp).toLocaleTimeString() : "--"}
             </p>
           </div>
         </div>
