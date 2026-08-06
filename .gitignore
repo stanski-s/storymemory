@@ -9,6 +9,11 @@ dist/
 **/dist/
 *.log
 
+# Environment & Secret files
+.env
+.env.local
+.env.*
+
 # IDE & Editor files
 .idea/
 *.iml
@@ -28,4 +33,3 @@ AGENTS.md
 CONTEXT.md
 SPEC.md
 HELP.md
-
