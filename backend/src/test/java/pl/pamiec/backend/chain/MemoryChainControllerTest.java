@@ -77,15 +77,23 @@ class MemoryChainControllerTest {
         String idStr = responseStr.substring(responseStr.indexOf("\"id\":\"") + 6, responseStr.indexOf("\",\"status\""));
         UUID chainId = UUID.fromString(idStr);
 
-        // Wait briefly for virtual thread async generation to finish
-        Thread.sleep(1000);
+        // Wait for virtual thread async generation to complete
+        MemoryChain chain = null;
+        for (int i = 0; i < 30; i++) {
+            Thread.sleep(100);
+            chain = chainRepository.findById(chainId).orElseThrow();
+            if (chain.getStatus() == ChainStatus.COMPLETED || chain.getStatus() == ChainStatus.FAILED) {
+                break;
+            }
+        }
 
-        MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
+        assertThat(chain).isNotNull();
         assertThat(chain.getStatus()).isEqualTo(ChainStatus.COMPLETED);
         assertThat(chain.getCards()).hasSize(2);
         assertThat(chain.getCards().get(0).getTargetItem()).isEqualTo("perro");
         assertThat(chain.getCards().get(1).getTargetItem()).isEqualTo("gato");
     }
+
 
     @Test
     void shouldSubscribeToSseStream() throws Exception {

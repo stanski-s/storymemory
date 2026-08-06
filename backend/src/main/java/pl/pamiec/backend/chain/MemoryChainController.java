@@ -31,6 +31,11 @@ public class MemoryChainController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChainQuery(@RequestParam(name = "chainId", required = false) UUID chainId) {
+        return chainService.subscribeToStream(chainId);
+    }
+
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChainProgress(@PathVariable UUID id) {
         return chainService.subscribeToStream(id);
@@ -46,3 +51,4 @@ public class MemoryChainController {
         }
     }
 }
+

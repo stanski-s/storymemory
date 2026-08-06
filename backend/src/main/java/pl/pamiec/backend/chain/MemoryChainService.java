@@ -34,7 +34,8 @@ public class MemoryChainService {
 
     public CreateChainResponse createChain(CreateChainRequest request) {
         String rawItemsStr = String.join(",", request.items());
-        MemoryChain chain = new MemoryChain(request.topic(), request.targetLanguage(), rawItemsStr);
+        String effectiveLang = request.getEffectiveLanguage();
+        MemoryChain chain = new MemoryChain(request.userId(), request.topic(), effectiveLang, rawItemsStr);
         chain.setStatus(ChainStatus.GENERATING);
         MemoryChain savedChain = chainRepository.save(chain);
 
@@ -46,6 +47,9 @@ public class MemoryChainService {
 
     public SseEmitter subscribeToStream(UUID chainId) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
+        if (chainId == null) {
+            return emitter;
+        }
         List<SseEmitter> emitters = emittersMap.computeIfAbsent(chainId, k -> new CopyOnWriteArrayList<>());
         emitters.add(emitter);
 
@@ -59,7 +63,8 @@ public class MemoryChainService {
                 Map<String, Object> createdData = Map.of(
                     "chainId", chain.getId(),
                     "topic", chain.getTopic(),
-                    "targetLanguage", chain.getTargetLanguage(),
+                    "language", chain.getLanguage(),
+                    "targetLanguage", chain.getLanguage(),
                     "totalItems", Arrays.asList(chain.getRawItems().split(",")).size(),
                     "status", chain.getStatus().name()
                 );
@@ -104,7 +109,7 @@ public class MemoryChainService {
             .map(c -> new StoryCardDto(c.getId(), c.getSequenceIndex(), c.getTargetItem(), c.getStorySegment(), c.getImagePrompt(), c.getImageUrl(), c.getAudioUrl()))
             .toList();
 
-        return new MemoryChainDto(chain.getId(), chain.getTopic(), chain.getTargetLanguage(), rawItemsList, chain.getStatus(), chain.getCreatedAt(), cardDtos);
+        return new MemoryChainDto(chain.getId(), chain.getUserId(), chain.getTopic(), chain.getLanguage(), chain.getLanguage(), rawItemsList, chain.getStatus(), chain.getCreatedAt(), cardDtos);
     }
 
     private void processChainGeneration(UUID chainId, CreateChainRequest request) {
@@ -112,13 +117,14 @@ public class MemoryChainService {
             emitEvent(chainId, "CHAIN_CREATED", Map.of(
                 "chainId", chainId,
                 "topic", request.topic(),
-                "targetLanguage", request.targetLanguage(),
+                "language", request.getEffectiveLanguage(),
+                "targetLanguage", request.getEffectiveLanguage(),
                 "totalItems", request.items().size(),
                 "status", "GENERATING"
             ));
 
             GeneratedStoryChain generatedChain = storyGeneratorEngine.generateStory(
-                request.topic(), request.targetLanguage(), request.items()
+                request.topic(), request.getEffectiveLanguage(), request.items()
             );
 
             MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
@@ -128,18 +134,22 @@ public class MemoryChainService {
                 for (GeneratedCardSegment seg : generatedChain.cards()) {
                     StoryCard card = new StoryCard(chain, seg.sequenceIndex(), seg.targetItem(), seg.storySegment(), seg.imagePrompt());
                     StoryCard savedCard = cardRepository.save(card);
+                    chain.addCard(savedCard);
                     createdCards.add(savedCard);
 
-                    emitEvent(chainId, "CARD_GENERATED", Map.of(
+                    Map<String, Object> cardData = Map.of(
                         "chainId", chainId,
                         "cardId", savedCard.getId(),
                         "sequenceIndex", savedCard.getSequenceIndex(),
                         "targetItem", savedCard.getTargetItem(),
                         "storySegment", savedCard.getStorySegment(),
                         "imagePrompt", savedCard.getImagePrompt()
-                    ));
+                    );
+                    emitEvent(chainId, "CARD_GENERATED", cardData);
+                    emitEvent(chainId, "CARD_IMAGE_GENERATED", cardData);
                 }
             }
+
 
             chain.setStatus(ChainStatus.COMPLETED);
             chainRepository.save(chain);
@@ -199,3 +209,4 @@ public class MemoryChainService {
         }
     }
 }
+

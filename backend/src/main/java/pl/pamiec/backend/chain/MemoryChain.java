@@ -14,11 +14,14 @@ public class MemoryChain {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "user_id")
+    private String userId;
+
     @Column(nullable = false)
     private String topic;
 
-    @Column(name = "target_language", nullable = false)
-    private String targetLanguage;
+    @Column(name = "language", nullable = false)
+    private String language;
 
     @Column(name = "raw_items", nullable = false, columnDefinition = "TEXT")
     private String rawItems;
@@ -36,22 +39,35 @@ public class MemoryChain {
 
     public MemoryChain() {}
 
-    public MemoryChain(String topic, String targetLanguage, String rawItems) {
+    public MemoryChain(String userId, String topic, String language, String rawItems) {
+        this.userId = (userId != null && !userId.isBlank()) ? userId : "guest";
         this.topic = topic;
-        this.targetLanguage = targetLanguage;
+        this.language = language;
         this.rawItems = rawItems;
         this.status = ChainStatus.PENDING;
         this.createdAt = Instant.now();
     }
 
+
+    public MemoryChain(String topic, String language, String rawItems) {
+        this(null, topic, language, rawItems);
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
 
-    public String getTargetLanguage() { return targetLanguage; }
-    public void setTargetLanguage(String targetLanguage) { this.targetLanguage = targetLanguage; }
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
+
+    // Alias for backward compatibility if needed
+    public String getTargetLanguage() { return language; }
+    public void setTargetLanguage(String targetLanguage) { this.language = targetLanguage; }
 
     public String getRawItems() { return rawItems; }
     public void setRawItems(String rawItems) { this.rawItems = rawItems; }
