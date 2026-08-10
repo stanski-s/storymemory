@@ -7,7 +7,7 @@ import { Sparkles, BookOpen, Globe, ListOrdered, Loader2 } from "lucide-react";
 export function ChainCreateForm() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("Spanish");
+  const [targetLanguage, setTargetLanguage] = useState("Polish");
   const [itemsRaw, setItemsRaw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export function ChainCreateForm() {
           </label>
           <input
             type="text"
-            placeholder="e.g. Spanish Animals, Organic Chemistry, World Capitals"
+            placeholder="e.g. Polish Vocabulary, Organic Chemistry, World Capitals"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
@@ -105,13 +105,8 @@ export function ChainCreateForm() {
             onChange={(e) => setTargetLanguage(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
           >
-            <option value="Spanish">Spanish</option>
-            <option value="German">German</option>
-            <option value="English">English</option>
             <option value="Polish">Polish</option>
-            <option value="French">French</option>
-            <option value="Italian">Italian</option>
-            <option value="Japanese">Japanese</option>
+            <option value="English">English</option>
           </select>
         </div>
 

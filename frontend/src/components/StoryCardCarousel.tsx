@@ -1,9 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { StoryCard } from "@/types/chain";
-import { ChevronUp, ChevronDown, Sparkles, Image as ImageIcon, Loader2, RefreshCw } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  Sparkles,
+  Image as ImageIcon,
+  Loader2,
+  RefreshCw,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Radio
+} from "lucide-react";
 
 interface StoryCardCarouselProps {
   cards: StoryCard[];
@@ -15,32 +27,59 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGeneratingCardId, setIsGeneratingCardId] = useState<string | null>(null);
 
+  // Audio Player State
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [autoAdvance, setAutoAdvance] = useState(true);
+
+  const activeCard = cards && cards.length > 0 ? (cards[currentIndex] || cards[0]) : null;
+
+  // Auto-play / audio src change handler
+  useEffect(() => {
+    if (!audioRef.current || !activeCard?.audioUrl) return;
+
+    audioRef.current.src = activeCard.audioUrl;
+    audioRef.current.currentTime = 0;
+
+    if (isPlaying || autoAdvance) {
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => {
+          console.warn("Audio auto-play prevented by browser policy:", err);
+          setIsPlaying(false);
+        });
+    }
+  }, [currentIndex, activeCard?.audioUrl]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         handleNext();
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         handlePrev();
+      } else if (e.key === " ") {
+        e.preventDefault();
+        togglePlayPause();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, cards.length]);
+  }, [currentIndex, cards?.length, isPlaying]);
 
   if (!cards || cards.length === 0) {
     return (
       <div className="w-full h-96 rounded-3xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl">
         <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
         <p className="text-slate-300 font-semibold">Generating your surreal memory cards...</p>
-        <p className="text-xs text-slate-500 mt-1">Connecting to Spring AI & Cloudflare Workers AI</p>
+        <p className="text-xs text-slate-500 mt-1">Connecting to Spring AI & Edge TTS</p>
       </div>
     );
   }
 
-  const activeCard = cards[currentIndex] || cards[0];
-
   // Find nearest preceding keyframe image for visual inheritance
-  const inheritedImageUrl = activeCard.imageUrl
+  const inheritedImageUrl = activeCard?.imageUrl
     ? activeCard.imageUrl
     : cards.slice(0, currentIndex).reverse().find((c) => c.imageUrl)?.imageUrl ||
       cards.find((c) => c.imageUrl)?.imageUrl ||
@@ -55,6 +94,32 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => console.error("Failed to play audio:", err));
+    }
+  };
+
+  const toggleMute = () => {
+    if (!audioRef.current) return;
+    audioRef.current.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+    if (autoAdvance && currentIndex < cards.length - 1) {
+      handleNext();
     }
   };
 
@@ -76,24 +141,88 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
     }
   };
 
+  if (!activeCard) return null;
+
   return (
     <div className="relative w-full max-w-lg mx-auto flex flex-col items-center select-none">
-      {/* Top Slide Progress Bar */}
-      <div className="w-full flex items-center justify-between gap-1 mb-4 px-2">
-        {cards.map((card, idx) => (
+      {/* Hidden HTML5 Audio Element */}
+      <audio
+        ref={audioRef}
+        onEnded={handleAudioEnded}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+      />
+
+      {/* Top Controls: Slide Progress Bar & Audio Player Bar */}
+      <div className="w-full space-y-3 mb-4 px-2">
+        {/* Progress Bar */}
+        <div className="w-full flex items-center justify-between gap-1">
+          {cards.map((card, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                idx === currentIndex
+                  ? "bg-purple-400 shadow-sm shadow-purple-500/50"
+                  : idx < currentIndex
+                  ? "bg-purple-900/80"
+                  : "bg-slate-800"
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Audio Player Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-lg">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={togglePlayPause}
+              disabled={!activeCard.audioUrl}
+              aria-label={isPlaying ? "Pause audio" : "Play audio"}
+              className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-all shadow-md shadow-purple-950/40"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            </button>
+
+            <button
+              onClick={toggleMute}
+              aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-slate-300" />}
+            </button>
+
+            {/* Audio Waveform Indicator */}
+            {isPlaying && (
+              <div className="flex items-center gap-1 h-4 px-2">
+                <span className="w-0.5 h-full bg-purple-400 animate-pulse" />
+                <span className="w-0.5 h-2/3 bg-indigo-400 animate-bounce" />
+                <span className="w-0.5 h-4/5 bg-purple-300 animate-pulse" />
+              </div>
+            )}
+
+            {!activeCard.audioUrl && (
+              <span className="text-xs text-slate-500 italic flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                Generating audio...
+              </span>
+            )}
+          </div>
+
+          {/* Auto-Advance Toggle */}
           <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-              idx === currentIndex
-                ? "bg-purple-400 shadow-sm shadow-purple-500/50"
-                : idx < currentIndex
-                ? "bg-purple-900/80"
-                : "bg-slate-800"
+            onClick={() => setAutoAdvance(!autoAdvance)}
+            className={`px-3 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              autoAdvance
+                ? "bg-purple-950/80 border-purple-700/60 text-purple-200"
+                : "bg-slate-950/60 border-slate-800 text-slate-400"
             }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
+          >
+            <Radio className={`w-3.5 h-3.5 ${autoAdvance ? "text-purple-400 animate-pulse" : "text-slate-500"}`} />
+            <span>Auto-Advance</span>
+          </button>
+        </div>
       </div>
 
       {/* Vertical TikTok-Style Swipe Container */}
@@ -230,7 +359,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
 
       {/* Navigation Keyboard Hint */}
       <div className="mt-3 text-xs text-slate-500 flex items-center gap-2">
-        <span>Swipe vertically or use Arrow Keys (↑ / ↓) to navigate</span>
+        <span>Space: Play/Pause | Arrow Keys (↑ / ↓): Navigate</span>
         {isGenerating && (
           <span className="inline-flex items-center gap-1 text-purple-400">
             <RefreshCw className="w-3 h-3 animate-spin" />
@@ -241,3 +370,4 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
     </div>
   );
 }
+

@@ -18,7 +18,8 @@ describe("ChainCreateForm Component", () => {
   it("renders form elements correctly", () => {
     render(<ChainCreateForm />);
     expect(screen.getByText(/Create Mnemonic Memory Chain/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Spanish Animals/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Polish Vocabulary/i)).toBeInTheDocument();
+
     expect(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i })).toBeInTheDocument();
   });
 
@@ -30,9 +31,10 @@ describe("ChainCreateForm Component", () => {
 
     render(<ChainCreateForm />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Spanish Animals/i), {
-      target: { value: "Spanish Vocabulary" },
+    fireEvent.change(screen.getByPlaceholderText(/Polish Vocabulary/i), {
+      target: { value: "Polish Vocabulary" },
     });
+
     fireEvent.change(screen.getByPlaceholderText(/perro/i), {
       target: { value: "perro\ngato" },
     });

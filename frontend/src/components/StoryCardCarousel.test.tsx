@@ -78,4 +78,32 @@ describe("StoryCardCarousel Component", () => {
 
     expect(screen.getByText("gato")).toBeInTheDocument();
   });
+
+  it("renders audio player controls and allows play/pause toggle", () => {
+
+    window.HTMLMediaElement.prototype.play = vi.fn().mockImplementation(() => Promise.resolve());
+    window.HTMLMediaElement.prototype.pause = vi.fn();
+
+    const audioCards: StoryCard[] = [
+      {
+        sequenceIndex: 0,
+        targetItem: "pies",
+        storySegment: "A dog playing music.",
+        imagePrompt: "Dog playing guitar",
+        imageUrl: "http://localhost:9000/pamiec-media/images/card0.png",
+        audioUrl: "http://localhost:9000/pamiec-media/audio/card0.mp3",
+      },
+    ];
+
+    render(<StoryCardCarousel cards={audioCards} isGenerating={false} />);
+
+    expect(screen.getByText("Auto-Advance")).toBeInTheDocument();
+
+    const playBtn = screen.getByRole("button", { name: /play audio/i });
+    expect(playBtn).toBeInTheDocument();
+
+    fireEvent.click(playBtn);
+    expect(window.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
 });
+
