@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pl.pamiec.backend.domain.chain.dto.CreateChainRequest;
 import pl.pamiec.backend.domain.chain.dto.CreateChainResponse;
-import pl.pamiec.backend.domain.chain.dto.MemoryChainDto;
+import pl.pamiec.backend.domain.chain.dto.StoryCardDto;
 
 import java.util.UUID;
 
@@ -37,5 +37,13 @@ public class MemoryChainController {
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeToStream(@PathVariable("id") UUID id) {
         return chainService.subscribeToStream(id);
+    }
+
+    @PostMapping("/{id}/cards/{cardId}/generate-image")
+    public ResponseEntity<StoryCardDto> generateCardImage(
+            @PathVariable("id") UUID chainId,
+            @PathVariable("cardId") UUID cardId) {
+        StoryCardDto updatedCard = chainService.generateCardImageOnDemand(chainId, cardId);
+        return ResponseEntity.ok(updatedCard);
     }
 }

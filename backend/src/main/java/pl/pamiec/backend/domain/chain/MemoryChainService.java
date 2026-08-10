@@ -79,7 +79,10 @@ public class MemoryChainService {
 
                 for (StoryCard card : chain.getCards()) {
                     Map<String, Object> cardData = buildCardEventData(chain.getId(), card);
-                    emitter.send(SseEmitter.event().name("CARD_IMAGE_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
+                    emitter.send(SseEmitter.event().name("CARD_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
+                    if (card.getImageUrl() != null && !card.getImageUrl().isBlank()) {
+                        emitter.send(SseEmitter.event().name("CARD_IMAGE_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
+                    }
                 }
 
                 if (chain.getStatus() == ChainStatus.COMPLETED) {
@@ -131,24 +134,58 @@ public class MemoryChainService {
             List<StoryCard> createdCards = new ArrayList<>();
 
             if (generatedChain != null && generatedChain.cards() != null) {
+                // Phase 1: Save cards and IMMEDIATELY emit CARD_GENERATED events for instant text UI rendering
                 for (GeneratedCardSegment seg : generatedChain.cards()) {
                     StoryCard card = new StoryCard(chain, seg.sequenceIndex(), seg.targetItem(), seg.storySegment(), seg.imagePrompt());
                     StoryCard savedCard = cardRepository.save(card);
                     chain.addCard(savedCard);
                     createdCards.add(savedCard);
 
-                    // Generate surreal illustration via Pollinations AI & upload to S3/MinIO
-                    byte[] imageBytes = imageGeneratorEngine.generateImage(savedCard.getImagePrompt());
-                    if (imageBytes != null && imageBytes.length > 0) {
-                        String imageUrl = objectStorageService.uploadImage(savedCard.getId(), imageBytes, "image/png");
-                        if (imageUrl != null && !imageUrl.isBlank()) {
-                            savedCard.setImageUrl(imageUrl);
-                            cardRepository.save(savedCard);
+                    Map<String, Object> cardData = buildCardEventData(chainId, savedCard);
+                    emitEvent(chainId, "CARD_GENERATED", cardData);
+                }
+
+                // Phase 2: Generate surreal illustrations sequentially (1 request at a time to comply with Pollinations IP queue limits)
+                // Heartbeat thread keeps SSE connection active while Pollinations AI processes images
+                Thread heartbeatThread = Thread.ofVirtual().start(() -> {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        try {
+                            Thread.sleep(3000);
+                            emitEvent(chainId, "PING", Map.of("chainId", chainId, "timestamp", System.currentTimeMillis()));
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        } catch (Exception ignored) {}
+                    }
+                });
+
+                try {
+                    int totalCardsCount = createdCards.size();
+                    for (StoryCard card : createdCards) {
+                        if (!isKeyframe(card.getSequenceIndex(), totalCardsCount)) {
+                            log.info("Skipping automatic image generation for non-keyframe card index {} (total cards: {})", card.getSequenceIndex(), totalCardsCount);
+                            continue;
+                        }
+                        try {
+                            log.info("Generating surreal image sequentially for keyframe card index {} (ID: {})", card.getSequenceIndex(), card.getId());
+                            byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
+                            if (imageBytes != null && imageBytes.length > 0) {
+                                String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
+                                if (imageUrl != null && !imageUrl.isBlank()) {
+                                    card.setImageUrl(imageUrl);
+                                    cardRepository.save(card);
+
+                                    Map<String, Object> cardImageData = buildCardEventData(chainId, card);
+                                    emitEvent(chainId, "CARD_IMAGE_GENERATED", cardImageData);
+                                    log.info("Successfully generated & streamed image for keyframe card index {}", card.getSequenceIndex());
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("Failed sequential image generation for keyframe card index {}: {}", card.getSequenceIndex(), e.getMessage(), e);
                         }
                     }
-
-                    Map<String, Object> cardData = buildCardEventData(chainId, savedCard);
-                    emitEvent(chainId, "CARD_IMAGE_GENERATED", cardData);
+                } finally {
+                    heartbeatThread.interrupt();
                 }
             }
 
@@ -212,6 +249,43 @@ public class MemoryChainService {
                 } catch (Exception ignored) {}
             }
         }
+    }
+
+    public static boolean isKeyframe(int cardIndex, int totalCards) {
+        if (totalCards <= 5) {
+            return true;
+        }
+        if (cardIndex == 0 || cardIndex == totalCards - 1) {
+            return true;
+        }
+        if (totalCards <= 10) {
+            return cardIndex % 2 == 0;
+        }
+        return cardIndex % 3 == 0;
+    }
+
+    public StoryCardDto generateCardImageOnDemand(UUID chainId, UUID cardId) {
+        StoryCard card = cardRepository.findById(cardId)
+            .orElseThrow(() -> new IllegalArgumentException("StoryCard not found with ID: " + cardId));
+
+        if (!card.getChain().getId().equals(chainId)) {
+            throw new IllegalArgumentException("Card ID " + cardId + " does not belong to chain " + chainId);
+        }
+
+        byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
+        if (imageBytes != null && imageBytes.length > 0) {
+            String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                card.setImageUrl(imageUrl);
+                cardRepository.save(card);
+
+                Map<String, Object> cardImageData = buildCardEventData(chainId, card);
+                emitEvent(chainId, "CARD_IMAGE_GENERATED", cardImageData);
+                log.info("On-demand generated image for card index {} (ID: {})", card.getSequenceIndex(), card.getId());
+            }
+        }
+
+        return new StoryCardDto(card.getId(), card.getSequenceIndex(), card.getTargetItem(), card.getStorySegment(), card.getImagePrompt(), card.getImageUrl(), card.getAudioUrl());
     }
 
     private void removeEmitter(UUID chainId, SseEmitter emitter) {

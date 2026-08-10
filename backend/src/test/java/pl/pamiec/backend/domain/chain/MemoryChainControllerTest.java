@@ -112,7 +112,9 @@ class MemoryChainControllerTest {
         chain = chainRepository.save(chain);
 
         StoryCard card1 = new StoryCard(chain, 0, "perro", "Neon dog on sombrero", "Surreal neon dog prompt");
+        card1.setImageUrl("http://localhost:9000/pamiec-media/images/1.png");
         StoryCard card2 = new StoryCard(chain, 1, "gato", "Cosmic cat with lasers", "Surreal cosmic cat prompt");
+        card2.setImageUrl("http://localhost:9000/pamiec-media/images/2.png");
         chain.addCard(card1);
         chain.addCard(card2);
         chainRepository.save(chain);
@@ -124,6 +126,7 @@ class MemoryChainControllerTest {
 
         String sseOutput = result.getResponse().getContentAsString();
         assertThat(sseOutput).contains("event:CHAIN_CREATED");
+        assertThat(sseOutput).contains("event:CARD_GENERATED");
         assertThat(sseOutput).contains("event:CARD_IMAGE_GENERATED");
         assertThat(sseOutput).contains("perro");
         assertThat(sseOutput).contains("gato");

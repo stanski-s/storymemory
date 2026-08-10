@@ -15,11 +15,11 @@ public class AppConfig {
     public RestClient.Builder restClientBuilder() {
         HttpClient httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.ALWAYS)
-            .connectTimeout(Duration.ofSeconds(15))
+            .connectTimeout(Duration.ofSeconds(30))
             .build();
 
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(60));
+        requestFactory.setReadTimeout(Duration.ofSeconds(120));
 
         return RestClient.builder().requestFactory(requestFactory);
     }

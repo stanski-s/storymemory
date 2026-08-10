@@ -98,7 +98,11 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
             1. For each item in the list, create a story card segment linking it to the narrative.
             2. The narrative must be vivid, visual, absurd, and funny to reinforce memory retention.
             3. Target item MUST be highlighted in the story segment text.
-            4. Provide a detailed, surreal visual prompt for an AI Text-to-Image model for each scene.
+            4. Provide an 'imagePrompt' for each card specifically optimized for AI Text-to-Image models (like FLUX / Stable Diffusion):
+               a. MUST be written in ENGLISH.
+               b. MUST explicitly feature the main subject/object ('targetItem' translated to English if target item is foreign) performing the exact visual action and setting from 'storySegment'.
+               c. Focus purely on concrete, visible subjects, comic book style, bold outlines, vibrant colors, environment, and physical actions (e.g., "Vivid comic book illustration of a glowing neon dog wearing a giant red sombrero hat floating over a golden desert, graphic novel style").
+               d. Do NOT use abstract metaphors or non-visual words like "concept", "symbolism", "memory gap", or "learning".
             
             Return ONLY valid JSON matching this exact structure:
             {
@@ -107,7 +111,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
                   "sequenceIndex": 0,
                   "targetItem": "item_name",
                   "storySegment": "Surreal narrative sentence introducing targetItem...",
-                  "imagePrompt": "Detailed surreal illustration description for Text-to-Image model..."
+                  "imagePrompt": "Vibrant comic book illustration of [English subject] [exact action and environment], graphic novel style, bold outlines, surreal cartoon art"
                 }
               ]
             }
