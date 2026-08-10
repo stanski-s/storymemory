@@ -24,12 +24,12 @@ class EdgeTtsGeneratorEngineTest {
     }
 
     @Test
-    @DisplayName("Should return null when sidecar is unreachable")
-    void shouldReturnNullWhenSidecarIsUnreachable() {
-        byte[] audio = ttsEngine.generateSpeech("Narration test in London.");
+    @DisplayName("Should generate non-empty audio when sidecar is available")
+    void shouldGenerateAudioFromLiveSidecar() {
+        byte[] audio = ttsEngine.generateSpeech("In a surreal world of memory, a glowing dog dances under neon lights.");
 
-        // Sidecar at localhost:8090 is not running during unit tests, should return null without throwing
-        assertThat(audio).isNull();
+        assertThat(audio).isNotNull();
+        assertThat(audio.length).isGreaterThan(1000);
     }
 
 }

@@ -1,5 +1,6 @@
 package pl.pamiec.backend.domain.tts;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,11 +12,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 
 @Service
 public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
 
     private static final Logger log = LoggerFactory.getLogger(EdgeTtsGeneratorEngine.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final String sidecarUrl;
     private final String defaultVoice;
@@ -53,11 +56,14 @@ public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
 
     private byte[] synthesizeViaSidecar(String text, String voice) throws Exception {
         HttpClient client = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
 
-        String jsonBody = String.format("{\"text\":%s,\"voice\":\"%s\"}",
-                escapeJson(text), voice);
+        String jsonBody = objectMapper.writeValueAsString(Map.of(
+                "text", text,
+                "voice", voice
+        ));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(sidecarUrl))
@@ -69,18 +75,8 @@ public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
         if (response.statusCode() == 200 && response.body() != null && response.body().length > 0) {
             return response.body();
         } else {
-            throw new RuntimeException("Sidecar returned status code " + response.statusCode());
+            String errorResponse = response.body() != null ? new String(response.body(), StandardCharsets.UTF_8) : "";
+            throw new RuntimeException("Sidecar returned status code " + response.statusCode() + " details: " + errorResponse);
         }
-    }
-
-    private String escapeJson(String text) {
-        if (text == null) return "\"\"";
-        return "\"" + text.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\b", "\\b")
-                .replace("\f", "\\f")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t") + "\"";
     }
 }

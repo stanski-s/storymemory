@@ -14,4 +14,4 @@ source venv/bin/activate
 pip install -q -r requirements.txt
 
 echo "Starting Edge-TTS FastAPI Sidecar Microservice on port 8090..."
-exec uvicorn app:app --port 8090 --host 0.0.0.0
+exec uvicorn app:app --port 8090 --host 0.0.0.0 --reload

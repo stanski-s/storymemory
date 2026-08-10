@@ -11,12 +11,12 @@ class TtsRequest(BaseModel):
     voice: str = "en-US-AvaMultilingualNeural"
 
 @app.post("/api/tts")
-async def generate_tts(request: TtsRequest):
-    if not request.text or not request.text.strip():
+async def generate_tts(payload: TtsRequest):
+    if not payload.text or not payload.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
     
     try:
-        communicate = edge_tts.Communicate(request.text, request.voice)
+        communicate = edge_tts.Communicate(payload.text, payload.voice)
         audio_bytes = bytearray()
         
         async for chunk in communicate.stream():

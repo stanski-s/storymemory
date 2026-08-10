@@ -98,9 +98,14 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
             1. LINKING METHOD STRUCTURE (Strict Sequential Coupling & No Forward Leakage):
                - Card 0 (for the 1st item): Introduce ONLY the 1st item in a vivid, absurd, visual setting. STRICTLY DO NOT introduce or mention any future items (2nd item, 3rd item, etc.) in Card 0!
                - Card i (for item i, where i > 0): Create a vivid interaction linking ONLY item[i-1] (the previous item) with item[i] (the current targetItem). STRICTLY DO NOT introduce or mention any future items (item[i+1], item[i+2], etc.) ahead of their turn!
-            2. The narrative MUST be in English, vivid, visual, absurd, and funny to reinforce sequential memory retention.
-            3. The target item MUST be explicitly mentioned in the story segment text.
-            4. Provide an 'imagePrompt' for each card specifically optimized for AI Text-to-Image models (like FLUX / Stable Diffusion):
+            2. SINGLE SENTENCE STRUCTURE (CRITICAL):
+               - Each 'storySegment' MUST be EXACTLY ONE single sentence.
+               - The sentence MUST be rich, detailed, vivid, absurd, and visual, approximately 15 to 25 words long.
+               - STRICTLY AVOID ultra-short 3-5 word sentences or fragments! Paint a complete, memorable scene in that single sentence.
+               - Do NOT use multiple sentences or background setup paragraphs. Keep it strictly to one single, rich, descriptive sentence.
+            3. The narrative MUST be in English, vivid, visual, absurd, and funny to reinforce sequential memory retention.
+            4. The target item MUST be explicitly mentioned in the story segment text.
+            5. Provide an 'imagePrompt' for each card specifically optimized for AI Text-to-Image models (like FLUX / Stable Diffusion):
                a. MUST be written in ENGLISH.
                b. MUST explicitly feature the main subject/object ('targetItem') performing the exact visual action and setting from 'storySegment'.
                c. Focus purely on concrete, visible subjects, comic book style, bold outlines, vibrant colors, environment, and physical actions (e.g., "Vivid comic book illustration of a glowing neon dog wearing a giant red sombrero hat floating over a golden desert, graphic novel style").
@@ -112,7 +117,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
                 {
                   "sequenceIndex": 0,
                   "targetItem": "item_name",
-                  "storySegment": "Surreal narrative sentence introducing targetItem...",
+                  "storySegment": "Vivid, detailed, and surreal single sentence introducing targetItem (1 sentence, 15-25 words).",
                   "imagePrompt": "Vibrant comic book illustration of [targetItem] [exact action and environment], graphic novel style, bold outlines, surreal cartoon art"
                 }
               ]
@@ -148,11 +153,11 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
             String story;
             String prompt;
             if (i == 0) {
-                story = "In a surreal world of " + topic + ", a glowing " + item + " suddenly appears, floating under neon lights.";
+                story = "In a surreal world of " + topic + ", a glowing " + item + " suddenly appears, floating majestically under vibrant neon lights while emitting colorful sparks.";
                 prompt = "Surreal digital art of a glowing neon " + item + " floating in deep cosmic space, 8k render.";
             } else {
                 String prevItem = items.get(i - 1);
-                story = "Suddenly, the " + prevItem + " collides violently with a giant " + item + ", causing an explosion of colorful confetti.";
+                story = "Suddenly, the " + prevItem + " collides violently with a giant " + item + ", causing a spectacular explosion of bright colorful confetti and dazzling fireworks across the sky.";
                 prompt = "Surreal digital art of a " + prevItem + " colliding with a giant " + item + " in space with colorful confetti explosion, comic book style.";
             }
             mockCards.add(new GeneratedCardSegment(i, item, story, prompt));
