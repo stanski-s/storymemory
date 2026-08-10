@@ -6,13 +6,16 @@ import { StoryCardCarousel } from "@/components/StoryCardCarousel";
 import { Sparkles, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, ArrowLeft, LayoutGrid, Layers } from "lucide-react";
 import Link from "next/link";
 
+import { Dumbbell } from "lucide-react";
+import { RecallGym } from "@/components/RecallGym";
+
 interface Props {
   chainId: string;
 }
 
 export function ChainStreamView({ chainId }: Props) {
   const stream = useMemoryChainStream(chainId);
-  const [viewMode, setViewMode] = useState<"CAROUSEL" | "LIST">("CAROUSEL");
+  const [viewMode, setViewMode] = useState<"CAROUSEL" | "LIST" | "RECALL">("CAROUSEL");
   const [generatingCardId, setGeneratingCardId] = useState<string | null>(null);
 
   const handleGenerateImageOnDemand = async (cardId: string) => {
@@ -71,6 +74,17 @@ export function ChainStreamView({ chainId }: Props) {
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>List View</span>
+            </button>
+            <button
+              onClick={() => setViewMode("RECALL")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-label text-xs font-bold transition-all cursor-pointer ${
+                viewMode === "RECALL"
+                  ? "bg-[#4648d4] text-[#ffffff] shadow-[2px_2px_0px_0px_#1b1c15] border border-[#1b1c15]"
+                  : "text-[#464554] hover:text-[#1b1c15]"
+              }`}
+            >
+              <Dumbbell className="w-3.5 h-3.5" />
+              <span>Recall Gym</span>
             </button>
           </div>
 
@@ -146,6 +160,8 @@ export function ChainStreamView({ chainId }: Props) {
           audioError={stream.audioError}
           onGenerateImageOnDemand={handleGenerateImageOnDemand}
         />
+      ) : viewMode === "RECALL" ? (
+        <RecallGym chainId={chainId} cards={stream.cards} />
       ) : (
         <div className="space-y-6">
           {stream.cards.map((card) => (

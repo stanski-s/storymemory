@@ -39,19 +39,40 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
 
   // Auto-play / audio src change handler
   useEffect(() => {
-    if (!audioRef.current || !activeCard?.audioUrl) return;
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    audioRef.current.src = activeCard.audioUrl;
-    audioRef.current.currentTime = 0;
+    if (!activeCard?.audioUrl) {
+      audio.pause();
+      audio.removeAttribute("src");
+      setIsPlaying(false);
+      return;
+    }
+
+    // Pause existing playback before updating source to avoid AbortError on pending requests
+    audio.pause();
+    audio.src = activeCard.audioUrl;
+    audio.currentTime = 0;
 
     if (isPlaying || autoAdvance) {
-      audioRef.current
-        .play()
-        .then(() => setIsPlaying(true))
-        .catch((err) => {
-          console.warn("Audio auto-play prevented by browser policy:", err);
-          setIsPlaying(false);
-        });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch((err: Error) => {
+            if (err.name === "AbortError") {
+              // The media fetching process was aborted because user navigated or track changed
+              return;
+            }
+            if (err.name === "NotAllowedError") {
+              // Autoplay policy prevented playback before first user interaction
+              setIsPlaying(false);
+              return;
+            }
+            console.warn("Audio play issue:", err);
+            setIsPlaying(false);
+          });
+      }
     }
   }, [currentIndex, activeCard?.audioUrl]);
 
