@@ -18,7 +18,7 @@ describe("ChainCreateForm Component", () => {
   it("renders form elements correctly", () => {
     render(<ChainCreateForm />);
     expect(screen.getByText(/Create Mnemonic Memory Chain/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Polish Vocabulary/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Solar System Planets/i)).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i })).toBeInTheDocument();
   });
@@ -31,13 +31,14 @@ describe("ChainCreateForm Component", () => {
 
     render(<ChainCreateForm />);
 
-    fireEvent.change(screen.getByPlaceholderText(/Polish Vocabulary/i), {
-      target: { value: "Polish Vocabulary" },
+    fireEvent.change(screen.getByPlaceholderText(/Solar System Planets/i), {
+      target: { value: "Solar System Planets" },
     });
 
-    fireEvent.change(screen.getByPlaceholderText(/perro/i), {
-      target: { value: "perro\ngato" },
+    fireEvent.change(screen.getByPlaceholderText(/Mercury/i), {
+      target: { value: "Mercury\nVenus" },
     });
+
 
     fireEvent.click(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i }));
 

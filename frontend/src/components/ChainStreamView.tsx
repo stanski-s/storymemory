@@ -97,11 +97,6 @@ export function ChainStreamView({ chainId }: Props) {
             <h1 className="text-3xl font-extrabold text-white tracking-tight">
               {stream.topic || "Generating Memory Chain..."}
             </h1>
-            {stream.targetLanguage && (
-              <p className="text-sm text-slate-400 mt-1">
-                Target Language: <span className="text-indigo-400 font-medium">{stream.targetLanguage}</span>
-              </p>
-            )}
           </div>
           <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-purple-400">
             <Sparkles className="w-6 h-6" />
@@ -139,9 +134,11 @@ export function ChainStreamView({ chainId }: Props) {
         <StoryCardCarousel
           cards={stream.cards}
           isGenerating={stream.status === "GENERATING"}
+          audioError={stream.audioError}
           onGenerateImageOnDemand={handleGenerateImageOnDemand}
         />
       ) : (
+
         <div className="space-y-6">
           {stream.cards.map((card) => (
             <div
@@ -158,10 +155,10 @@ export function ChainStreamView({ chainId }: Props) {
                   />
                 ) : (
                   <div className="p-4 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-                    <span className="text-slate-500">Scena kontynuowana</span>
+                    <span className="text-slate-500">Continued scene</span>
                     <button
-                      onClick={() => handleGenerateImageOnDemand(card.id)}
-                      disabled={generatingCardId === card.id}
+                      onClick={() => card.id && handleGenerateImageOnDemand(card.id)}
+                      disabled={!card.id || generatingCardId === card.id}
                       className="px-3 py-1.5 rounded-xl bg-purple-900/80 border border-purple-700/60 text-purple-200 hover:bg-purple-800 font-semibold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       {generatingCardId === card.id ? (
@@ -169,9 +166,10 @@ export function ChainStreamView({ chainId }: Props) {
                       ) : (
                         <Sparkles className="w-3.5 h-3.5 text-purple-300" />
                       )}
-                      <span>Generuj obrazek</span>
+                      <span>Generate image</span>
                     </button>
                   </div>
+
                 )}
               </div>
 

@@ -14,6 +14,7 @@ vi.mock("framer-motion", () => ({
 describe("StoryCardCarousel Component", () => {
   const mockCards: StoryCard[] = [
     {
+      id: "card-1",
       sequenceIndex: 0,
       targetItem: "perro",
       storySegment: "A glowing neon dog dances on top of a giant sombrero.",
@@ -21,6 +22,7 @@ describe("StoryCardCarousel Component", () => {
       imageUrl: "http://localhost:9000/pamiec-media/images/card0.png",
     },
     {
+      id: "card-2",
       sequenceIndex: 1,
       targetItem: "gato",
       storySegment: "Suddenly a floating space cat shoots lasers.",
@@ -52,14 +54,16 @@ describe("StoryCardCarousel Component", () => {
     fireEvent.click(nextBtn);
 
     expect(screen.getByText("gato")).toBeInTheDocument();
-    expect(screen.getByText("Scena kontynuowana")).toBeInTheDocument();
+    expect(screen.getByText("Continued scene")).toBeInTheDocument();
 
-    const generateBtn = screen.getByRole("button", { name: /Generuj obrazek dla tego słowa/i });
+    const generateBtn = screen.getByRole("button", { name: /Generate image/i });
     expect(generateBtn).toBeInTheDocument();
 
+
     fireEvent.click(generateBtn);
-    expect(onGenerate).toHaveBeenCalled();
+    expect(onGenerate).toHaveBeenCalledWith("card-2");
   });
+
 
   it("navigates card stack using vertical swipe gestures", () => {
     render(<StoryCardCarousel cards={mockCards} isGenerating={false} />);

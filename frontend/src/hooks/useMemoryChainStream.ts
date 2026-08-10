@@ -11,6 +11,7 @@ export interface StreamState {
   cards: StoryCard[];
   progress: number;
   error: string | null;
+  audioError: string | null;
 }
 
 export function useMemoryChainStream(chainId: string | null) {
@@ -22,6 +23,7 @@ export function useMemoryChainStream(chainId: string | null) {
     cards: [],
     progress: 0,
     error: null,
+    audioError: null,
   });
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -29,7 +31,7 @@ export function useMemoryChainStream(chainId: string | null) {
   useEffect(() => {
     if (!chainId) return;
 
-    setState((prev) => ({ ...prev, status: "CONNECTING", error: null }));
+    setState((prev) => ({ ...prev, status: "CONNECTING", error: null, audioError: null }));
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
     const sseUrl = `${baseUrl}/api/chains/${chainId}/stream`;
@@ -106,6 +108,48 @@ export function useMemoryChainStream(chainId: string | null) {
       }
     });
 
+    eventSource.addEventListener("CARD_AUDIO_GENERATED", (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        const sequenceIndex = data.sequenceIndex;
+        const audioUrl = data.audioUrl;
+
+        setState((prev) => {
+          const cards = prev.cards.map((c) => {
+            if (c.sequenceIndex === sequenceIndex) {
+              return { ...c, audioUrl: audioUrl || c.audioUrl };
+            }
+            return c;
+          });
+          return {
+            ...prev,
+            cards,
+          };
+        });
+      } catch (err) {
+        console.error("Error parsing CARD_AUDIO_GENERATED event", err);
+      }
+    });
+
+    eventSource.addEventListener("CARD_AUDIO_FAILED", (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        setState((prev) => ({
+          ...prev,
+          audioError: data.message || "Failed to generate audio narration for the story",
+        }));
+      } catch (err) {
+        console.error("Error parsing CARD_AUDIO_FAILED event", err);
+        setState((prev) => ({
+          ...prev,
+          audioError: "Failed to generate audio narration for the story",
+        }));
+      }
+    });
+
+
+
+
     eventSource.addEventListener("PING", () => {
       // Heartbeat ping from server keeping connection active
     });
@@ -162,14 +206,16 @@ export function useMemoryChainStream(chainId: string | null) {
           const data = await res.json();
           if (data && data.cards && data.cards.length > 0) {
             setState((prev) => {
-              const updatedCards: StoryCard[] = data.cards.map((c: { id: string; sequenceIndex: number; targetItem: string; storySegment: string; imagePrompt: string; imageUrl?: string }) => ({
+              const updatedCards: StoryCard[] = data.cards.map((c: { id: string; sequenceIndex: number; targetItem: string; storySegment: string; imagePrompt: string; imageUrl?: string; audioUrl?: string }) => ({
                 id: c.id,
                 sequenceIndex: c.sequenceIndex,
                 targetItem: c.targetItem,
                 storySegment: c.storySegment,
                 imagePrompt: c.imagePrompt,
                 imageUrl: c.imageUrl || null,
+                audioUrl: c.audioUrl || null,
               }));
+
 
               const isCompleted = data.status === "COMPLETED";
               return {

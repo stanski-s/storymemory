@@ -14,16 +14,18 @@ import {
   Pause,
   Volume2,
   VolumeX,
-  Radio
+  Radio,
+  AlertTriangle
 } from "lucide-react";
 
 interface StoryCardCarouselProps {
   cards: StoryCard[];
   isGenerating?: boolean;
+  audioError?: string | null;
   onGenerateImageOnDemand?: (cardId: string) => Promise<void>;
 }
 
-export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImageOnDemand }: StoryCardCarouselProps) {
+export function StoryCardCarousel({ cards, isGenerating = false, audioError, onGenerateImageOnDemand }: StoryCardCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGeneratingCardId, setIsGeneratingCardId] = useState<string | null>(null);
 
@@ -180,7 +182,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
               onClick={togglePlayPause}
               disabled={!activeCard.audioUrl}
               aria-label={isPlaying ? "Pause audio" : "Play audio"}
-              className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-all shadow-md shadow-purple-950/40"
+              className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-all shadow-md shadow-purple-950/40 cursor-pointer disabled:cursor-not-allowed"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>
@@ -188,7 +190,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
             <button
               onClick={toggleMute}
               aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-slate-300" />}
             </button>
@@ -203,9 +205,18 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
             )}
 
             {!activeCard.audioUrl && (
-              <span className="text-xs text-slate-500 italic flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
-                Generating audio...
+              <span className="text-xs text-amber-400 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-800/40">
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                    <span>Generating audio...</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <span>Failed to generate audio narration for the story</span>
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -213,7 +224,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
           {/* Auto-Advance Toggle */}
           <button
             onClick={() => setAutoAdvance(!autoAdvance)}
-            className={`px-3 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            className={`px-3 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
               autoAdvance
                 ? "bg-purple-950/80 border-purple-700/60 text-purple-200"
                 : "bg-slate-950/60 border-slate-800 text-slate-400"
@@ -223,7 +234,16 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
             <span>Auto-Advance</span>
           </button>
         </div>
+
+        {/* Global Audio Error Banner */}
+        {audioError && (
+          <div className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-amber-950/80 border border-amber-700/60 text-amber-200 text-xs shadow-lg backdrop-blur-md">
+            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span className="font-medium">{audioError}</span>
+          </div>
+        )}
       </div>
+
 
       {/* Vertical TikTok-Style Swipe Container */}
       <div
@@ -287,7 +307,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
                 </span>
                 {!activeCard.imageUrl && inheritedImageUrl && (
                   <span className="px-2.5 py-0.5 rounded-lg bg-amber-950/80 border border-amber-700/50 text-[10px] font-medium text-amber-300 backdrop-blur-md">
-                    Scena kontynuowana
+                    Continued scene
                   </span>
                 )}
               </div>
@@ -314,19 +334,19 @@ export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImage
                 {/* On-Demand Image Generation Button for Intermediate Cards */}
                 {!activeCard.imageUrl && (
                   <button
-                    onClick={() => handleGenerateClick(activeCard.id)}
-                    disabled={isGeneratingCardId === activeCard.id}
+                    onClick={() => activeCard.id && handleGenerateClick(activeCard.id)}
+                    disabled={!activeCard.id || isGeneratingCardId === activeCard.id}
                     className="w-full mt-2 py-2 px-3 rounded-xl bg-purple-900/60 hover:bg-purple-800/80 border border-purple-700/50 text-xs font-semibold text-purple-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isGeneratingCardId === activeCard.id ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
-                        <span>Generuję obrazek dla słowa...</span>
+                        <span>Generating image...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-                        <span>Generuj obrazek dla tego słowa</span>
+                        <span>Generate image for this card</span>
                       </>
                     )}
                   </button>

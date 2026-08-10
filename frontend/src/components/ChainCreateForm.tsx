@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, BookOpen, Globe, ListOrdered, Loader2 } from "lucide-react";
+import { Sparkles, BookOpen, ListOrdered, Loader2 } from "lucide-react";
 
 export function ChainCreateForm() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("Polish");
   const [itemsRaw, setItemsRaw] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +34,7 @@ export function ChainCreateForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: topic.trim() || "Memory Chain",
-          targetLanguage,
+          targetLanguage: "English",
           items,
         }),
       });
@@ -68,7 +67,7 @@ export function ChainCreateForm() {
             Create Mnemonic Memory Chain
           </h2>
           <p className="text-sm text-slate-400">
-            AI-powered surreal story generation connecting your target items into memorable visual hooks.
+            AI-powered surreal story generation connecting your target items into a sequential memory hook chain.
           </p>
         </div>
       </div>
@@ -87,7 +86,7 @@ export function ChainCreateForm() {
           </label>
           <input
             type="text"
-            placeholder="e.g. Polish Vocabulary, Organic Chemistry, World Capitals"
+            placeholder="e.g. Solar System Planets, USA Presidents, Grocery List"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
@@ -97,34 +96,19 @@ export function ChainCreateForm() {
 
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-            <Globe className="w-4 h-4 text-indigo-400" />
-            Target Language / Context
-          </label>
-          <select
-            value={targetLanguage}
-            onChange={(e) => setTargetLanguage(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
-          >
-            <option value="Polish">Polish</option>
-            <option value="English">English</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
             <ListOrdered className="w-4 h-4 text-emerald-400" />
-            Target Learning Items (comma or line separated)
+            Target Items to Memorize in Order (comma or line separated)
           </label>
           <textarea
             rows={4}
-            placeholder="perro&#10;gato&#10;caballo&#10;pájaro"
+            placeholder="Mercury&#10;Venus&#10;Earth&#10;Mars&#10;Jupiter"
             value={itemsRaw}
             onChange={(e) => setItemsRaw(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all font-mono text-sm"
             required
           />
           <p className="mt-1 text-xs text-slate-500">
-            Enter each vocabulary word or phrase on a new line or separated by commas.
+            Enter each item on a new line or separated by commas. The AI story will connect them sequentially.
           </p>
         </div>
 
