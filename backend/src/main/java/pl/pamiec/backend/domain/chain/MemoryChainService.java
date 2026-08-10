@@ -137,7 +137,7 @@ public class MemoryChainService {
                     chain.addCard(savedCard);
                     createdCards.add(savedCard);
 
-                    // Generate surreal illustration via Hugging Face & upload to S3/MinIO
+                    // Generate surreal illustration via Pollinations AI & upload to S3/MinIO
                     byte[] imageBytes = imageGeneratorEngine.generateImage(savedCard.getImagePrompt());
                     if (imageBytes != null && imageBytes.length > 0) {
                         String imageUrl = objectStorageService.uploadImage(savedCard.getId(), imageBytes, "image/png");

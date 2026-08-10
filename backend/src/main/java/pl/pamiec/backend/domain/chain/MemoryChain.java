@@ -14,8 +14,8 @@ public class MemoryChain {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "user_id")
-    private UUID userId;
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
     @Column(nullable = false)
     private String topic;
@@ -39,22 +39,22 @@ public class MemoryChain {
 
     public MemoryChain() {}
 
-    public MemoryChain(UUID userId, String topic, String language, String rawItems) {
-        this.userId = userId;
+    public MemoryChain(String userId, String topic, String language, String rawItems) {
+        this.userId = userId != null ? userId : "00000000-0000-0000-0000-000000000000";
         this.topic = topic;
         this.language = language;
         this.rawItems = rawItems;
     }
 
     public MemoryChain(String topic, String language, String rawItems) {
-        this(UUID.fromString("00000000-0000-0000-0000-000000000000"), topic, language, rawItems);
+        this("00000000-0000-0000-0000-000000000000", topic, language, rawItems);
     }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }

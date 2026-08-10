@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record MemoryChainDto(
     UUID id,
-    UUID userId,
+    String userId,
     String topic,
     String language,
     String targetLanguage,
