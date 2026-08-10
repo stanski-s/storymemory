@@ -1,27 +1,27 @@
 package pl.pamiec.backend.domain.chain;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import pl.pamiec.backend.domain.chain.dto.GeneratedCardSegment;
 import pl.pamiec.backend.domain.chain.dto.GeneratedStoryChain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
 
     private static final Logger log = LoggerFactory.getLogger(GroqStoryGeneratorEngine.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestClient restClient;
 
     @Value("${groq.api-key:}")
     private String apiKey;
@@ -31,6 +31,10 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
 
     @Value("${groq.model:llama-3.3-70b-versatile}")
     private String modelName;
+
+    public GroqStoryGeneratorEngine(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder.build();
+    }
 
     @Override
     public GeneratedStoryChain generateStory(String topic, String language, List<String> items) {
@@ -43,31 +47,41 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
         }
 
         try {
-            OpenAiApi openAiApi = OpenAiApi.builder()
-                .baseUrl(baseUrl)
-                .apiKey(effectiveApiKey)
-                .build();
-
-            ChatModel chatModel = OpenAiChatModel.builder()
-                .openAiApi(openAiApi)
-                .defaultOptions(OpenAiChatOptions.builder()
-                    .model(modelName)
-                    .temperature(0.7)
-                    .build())
-                .build();
-
             String systemPrompt = buildSystemPrompt(topic, language, items);
             String userPrompt = "Generate the memory chain for target items: " + String.join(", ", items);
 
-            Prompt prompt = new Prompt(List.of(
-                new org.springframework.ai.chat.messages.SystemMessage(systemPrompt),
-                new org.springframework.ai.chat.messages.UserMessage(userPrompt)
-            ));
+            String endpointUrl = baseUrl.endsWith("/v1/chat/completions") ? baseUrl :
+                (baseUrl.endsWith("/") ? baseUrl + "v1/chat/completions" : baseUrl + "/v1/chat/completions");
 
-            String responseText = chatModel.call(prompt).getResult().getOutput().getText();
-            log.info("Raw response from Groq LLM: {}", responseText);
+            Map<String, Object> requestBody = Map.of(
+                "model", modelName,
+                "temperature", 0.7,
+                "messages", List.of(
+                    Map.of("role", "system", "content", systemPrompt),
+                    Map.of("role", "user", "content", userPrompt)
+                )
+            );
 
-            return parseJsonResponse(responseText, items);
+            log.info("Sending request to Groq Cloud API ({}) with model '{}'", endpointUrl, modelName);
+
+            String rawJsonResponse = restClient.post()
+                .uri(endpointUrl)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + effectiveApiKey)
+                .body(requestBody)
+                .retrieve()
+                .body(String.class);
+
+            if (rawJsonResponse == null || rawJsonResponse.isBlank()) {
+                log.warn("Empty response received from Groq Cloud API. Falling back to mock.");
+                return generateMockStoryChain(topic, language, items);
+            }
+
+            JsonNode rootNode = objectMapper.readTree(rawJsonResponse);
+            String contentText = rootNode.path("choices").path(0).path("message").path("content").asText();
+
+            log.info("Raw response text from Groq LLM: {}", contentText);
+            return parseJsonResponse(contentText, items);
 
         } catch (Exception e) {
             log.error("Failed to generate story using Groq Cloud AI: {}. Falling back to mock generator.", e.getMessage(), e);
