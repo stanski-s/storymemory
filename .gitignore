@@ -33,3 +33,16 @@ AGENTS.md
 CONTEXT.md
 SPEC.md
 HELP.md
+
+# Python Virtual Environments & Caches
+venv/
+**/venv/
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+

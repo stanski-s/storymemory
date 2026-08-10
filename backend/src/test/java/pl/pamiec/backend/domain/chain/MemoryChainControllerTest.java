@@ -15,6 +15,7 @@ import org.springframework.web.context.WebApplicationContext;
 import pl.pamiec.backend.domain.chain.dto.GeneratedCardSegment;
 import pl.pamiec.backend.domain.chain.dto.GeneratedStoryChain;
 import pl.pamiec.backend.domain.chain.image.ImageGeneratorEngine;
+import pl.pamiec.backend.domain.tts.TtsGeneratorEngine;
 import pl.pamiec.backend.storage.ObjectStorageService;
 
 import java.util.List;
@@ -48,6 +49,9 @@ class MemoryChainControllerTest {
     private ImageGeneratorEngine imageGeneratorEngine;
 
     @MockitoBean
+    private TtsGeneratorEngine ttsGeneratorEngine;
+
+    @MockitoBean
     private ObjectStorageService objectStorageService;
 
     @BeforeEach
@@ -62,6 +66,7 @@ class MemoryChainControllerTest {
 
         when(storyGeneratorEngine.generateStory(anyString(), anyString(), any())).thenReturn(mockChain);
         when(imageGeneratorEngine.generateImage(anyString())).thenReturn(new byte[]{1, 2, 3});
+        when(ttsGeneratorEngine.generateSpeech(anyString(), anyString())).thenReturn(new byte[]{1, 2, 3});
         when(objectStorageService.uploadImage(any(), any(), anyString())).thenReturn("http://localhost:9000/pamiec-media/images/test.png");
     }
 

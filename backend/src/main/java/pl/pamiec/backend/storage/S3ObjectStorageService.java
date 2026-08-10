@@ -55,4 +55,33 @@ public class S3ObjectStorageService implements ObjectStorageService {
             return "";
         }
     }
+
+    @Override
+    public String uploadAudio(UUID cardId, byte[] audioBytes, String contentType) {
+        if (audioBytes == null || audioBytes.length == 0) {
+            log.warn("Audio bytes null or empty for card ID: {}", cardId);
+            return "";
+        }
+
+        String extension = contentType != null && contentType.contains("wav") ? ".wav" : ".mp3";
+        String objectKey = "audio/" + cardId + extension;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .contentType(contentType != null ? contentType : "audio/mpeg")
+                .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(audioBytes));
+
+            String fullUrl = publicUrlPrefix + "/" + objectKey;
+            log.info("Successfully uploaded card audio narration to S3/MinIO: {}", fullUrl);
+            return fullUrl;
+        } catch (Exception e) {
+            log.error("Failed to upload audio to S3 for card {}: {}", cardId, e.getMessage(), e);
+            return "";
+        }
+    }
 }
+

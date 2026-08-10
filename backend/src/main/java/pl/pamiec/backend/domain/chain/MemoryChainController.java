@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pl.pamiec.backend.domain.chain.dto.CreateChainRequest;
 import pl.pamiec.backend.domain.chain.dto.CreateChainResponse;
+import pl.pamiec.backend.domain.chain.dto.MemoryChainDto;
 import pl.pamiec.backend.domain.chain.dto.StoryCardDto;
+
 
 import java.util.UUID;
 

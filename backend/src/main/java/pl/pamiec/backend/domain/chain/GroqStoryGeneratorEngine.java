@@ -90,17 +90,20 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
     }
 
     private String buildSystemPrompt(String topic, String language, List<String> items) {
+        String effLang = (language != null && !language.isBlank()) ? language : "English";
         return """
-            You are a master mnemonic storyteller creating absurd, vivid, and surreal memory chains.
-            The user wants to memorize a list of items for the topic '%s' in %s.
+            You are a master mnemonic storyteller creating absurd, vivid, and surreal sequential memory chains (Memory Palace / Link Method).
+            The user wants to memorize a sequence of items in strict order for the topic '%s'.
             
             Rules:
-            1. For each item in the list, create a story card segment linking it to the narrative.
-            2. The narrative must be vivid, visual, absurd, and funny to reinforce memory retention.
-            3. Target item MUST be highlighted in the story segment text.
+            1. LINKING METHOD STRUCTURE (Strict Sequential Coupling & No Forward Leakage):
+               - Card 0 (for the 1st item): Introduce ONLY the 1st item in a vivid, absurd, visual setting. STRICTLY DO NOT introduce or mention any future items (2nd item, 3rd item, etc.) in Card 0!
+               - Card i (for item i, where i > 0): Create a vivid interaction linking ONLY item[i-1] (the previous item) with item[i] (the current targetItem). STRICTLY DO NOT introduce or mention any future items (item[i+1], item[i+2], etc.) ahead of their turn!
+            2. The narrative MUST be in %s, vivid, visual, absurd, and funny to reinforce sequential memory retention.
+            3. The target item MUST be explicitly mentioned in the story segment text.
             4. Provide an 'imagePrompt' for each card specifically optimized for AI Text-to-Image models (like FLUX / Stable Diffusion):
                a. MUST be written in ENGLISH.
-               b. MUST explicitly feature the main subject/object ('targetItem' translated to English if target item is foreign) performing the exact visual action and setting from 'storySegment'.
+               b. MUST explicitly feature the main subject/object ('targetItem') performing the exact visual action and setting from 'storySegment'.
                c. Focus purely on concrete, visible subjects, comic book style, bold outlines, vibrant colors, environment, and physical actions (e.g., "Vivid comic book illustration of a glowing neon dog wearing a giant red sombrero hat floating over a golden desert, graphic novel style").
                d. Do NOT use abstract metaphors or non-visual words like "concept", "symbolism", "memory gap", or "learning".
             
@@ -111,11 +114,11 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
                   "sequenceIndex": 0,
                   "targetItem": "item_name",
                   "storySegment": "Surreal narrative sentence introducing targetItem...",
-                  "imagePrompt": "Vibrant comic book illustration of [English subject] [exact action and environment], graphic novel style, bold outlines, surreal cartoon art"
+                  "imagePrompt": "Vibrant comic book illustration of [targetItem] [exact action and environment], graphic novel style, bold outlines, surreal cartoon art"
                 }
               ]
             }
-            """.formatted(topic, language);
+            """.formatted(topic, effLang);
     }
 
     private GeneratedStoryChain parseJsonResponse(String rawResponse, List<String> items) {
@@ -143,8 +146,16 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
         List<GeneratedCardSegment> mockCards = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             String item = items.get(i);
-            String story = "In a surreal world of " + topic + ", a glowing " + item + " suddenly floats in space, sparkling under neon lights.";
-            String prompt = "Surreal digital art of a glowing neon " + item + " floating in deep cosmic space, 8k render.";
+            String story;
+            String prompt;
+            if (i == 0) {
+                story = "In a surreal world of " + topic + ", a glowing " + item + " suddenly appears, floating under neon lights.";
+                prompt = "Surreal digital art of a glowing neon " + item + " floating in deep cosmic space, 8k render.";
+            } else {
+                String prevItem = items.get(i - 1);
+                story = "Suddenly, the " + prevItem + " collides violently with a giant " + item + ", causing an explosion of colorful confetti.";
+                prompt = "Surreal digital art of a " + prevItem + " colliding with a giant " + item + " in space with colorful confetti explosion, comic book style.";
+            }
             mockCards.add(new GeneratedCardSegment(i, item, story, prompt));
         }
         return new GeneratedStoryChain(mockCards);

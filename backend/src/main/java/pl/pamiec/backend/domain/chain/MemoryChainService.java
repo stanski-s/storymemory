@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pl.pamiec.backend.domain.chain.dto.*;
 import pl.pamiec.backend.domain.chain.image.ImageGeneratorEngine;
+import pl.pamiec.backend.domain.tts.TtsGeneratorEngine;
 import pl.pamiec.backend.storage.ObjectStorageService;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ public class MemoryChainService {
     private final StoryCardRepository cardRepository;
     private final StoryGeneratorEngine storyGeneratorEngine;
     private final ImageGeneratorEngine imageGeneratorEngine;
+    private final TtsGeneratorEngine ttsGeneratorEngine;
     private final ObjectStorageService objectStorageService;
     private final Map<UUID, List<SseEmitter>> emittersMap = new ConcurrentHashMap<>();
 
@@ -31,13 +33,16 @@ public class MemoryChainService {
                                StoryCardRepository cardRepository,
                                StoryGeneratorEngine storyGeneratorEngine,
                                ImageGeneratorEngine imageGeneratorEngine,
+                               TtsGeneratorEngine ttsGeneratorEngine,
                                ObjectStorageService objectStorageService) {
         this.chainRepository = chainRepository;
         this.cardRepository = cardRepository;
         this.storyGeneratorEngine = storyGeneratorEngine;
         this.imageGeneratorEngine = imageGeneratorEngine;
+        this.ttsGeneratorEngine = ttsGeneratorEngine;
         this.objectStorageService = objectStorageService;
     }
+
 
     public CreateChainResponse createChain(CreateChainRequest request) {
         String rawItemsStr = String.join(",", request.items());
@@ -145,8 +150,7 @@ public class MemoryChainService {
                     emitEvent(chainId, "CARD_GENERATED", cardData);
                 }
 
-                // Phase 2: Generate surreal illustrations sequentially (1 request at a time to comply with Pollinations IP queue limits)
-                // Heartbeat thread keeps SSE connection active while Pollinations AI processes images
+                // Phase 2: Generate content sequentially
                 Thread heartbeatThread = Thread.ofVirtual().start(() -> {
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
@@ -162,27 +166,43 @@ public class MemoryChainService {
                 try {
                     int totalCardsCount = createdCards.size();
                     for (StoryCard card : createdCards) {
-                        if (!isKeyframe(card.getSequenceIndex(), totalCardsCount)) {
-                            log.info("Skipping automatic image generation for non-keyframe card index {} (total cards: {})", card.getSequenceIndex(), totalCardsCount);
-                            continue;
-                        }
-                        try {
-                            log.info("Generating surreal image sequentially for keyframe card index {} (ID: {})", card.getSequenceIndex(), card.getId());
-                            byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
-                            if (imageBytes != null && imageBytes.length > 0) {
-                                String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
-                                if (imageUrl != null && !imageUrl.isBlank()) {
-                                    card.setImageUrl(imageUrl);
-                                    cardRepository.save(card);
-
-                                    Map<String, Object> cardImageData = buildCardEventData(chainId, card);
-                                    emitEvent(chainId, "CARD_IMAGE_GENERATED", cardImageData);
-                                    log.info("Successfully generated & streamed image for keyframe card index {}", card.getSequenceIndex());
+                        // Image generation
+                        if (isKeyframe(card.getSequenceIndex(), totalCardsCount)) {
+                            try {
+                                byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
+                                if (imageBytes != null && imageBytes.length > 0) {
+                                    String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
+                                    if (imageUrl != null && !imageUrl.isBlank()) {
+                                        card.setImageUrl(imageUrl);
+                                        cardRepository.save(card);
+                                        emitEvent(chainId, "CARD_IMAGE_GENERATED", buildCardEventData(chainId, card));
+                                    }
                                 }
+                            } catch (Exception e) {
+                                log.error("Failed image generation for card {}: {}", card.getId(), e.getMessage());
+                            }
+                        }
+                        
+                        // Audio generation
+                        try {
+                            byte[] audioBytes = ttsGeneratorEngine.generateSpeech(card.getStorySegment(), chain.getLanguage());
+                            if (audioBytes != null && audioBytes.length > 0) {
+                                String audioUrl = objectStorageService.uploadAudio(card.getId(), audioBytes, "audio/mpeg");
+                                if (audioUrl != null && !audioUrl.isBlank()) {
+                                    card.setAudioUrl(audioUrl);
+                                    cardRepository.save(card);
+                                    emitEvent(chainId, "CARD_AUDIO_GENERATED", buildCardEventData(chainId, card));
+                                } else {
+                                    emitAudioFailedEvent(chainId, card);
+                                }
+                            } else {
+                                emitAudioFailedEvent(chainId, card);
                             }
                         } catch (Exception e) {
-                            log.error("Failed sequential image generation for keyframe card index {}: {}", card.getSequenceIndex(), e.getMessage(), e);
+                            log.error("Failed audio generation for card {}: {}", card.getId(), e.getMessage());
+                            emitAudioFailedEvent(chainId, card);
                         }
+
                     }
                 } finally {
                     heartbeatThread.interrupt();
@@ -222,8 +242,22 @@ public class MemoryChainService {
         if (card.getImageUrl() != null) {
             cardData.put("imageUrl", card.getImageUrl());
         }
+        if (card.getAudioUrl() != null) {
+            cardData.put("audioUrl", card.getAudioUrl());
+        }
         return cardData;
     }
+
+    private void emitAudioFailedEvent(UUID chainId, StoryCard card) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("chainId", chainId);
+        data.put("cardId", card.getId());
+        data.put("sequenceIndex", card.getSequenceIndex());
+        data.put("message", "Failed to generate audio narration for the story");
+        emitEvent(chainId, "CARD_AUDIO_FAILED", data);
+    }
+
+
 
     private void emitEvent(UUID chainId, String eventName, Object data) {
         List<SseEmitter> emitters = emittersMap.get(chainId);
