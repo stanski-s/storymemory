@@ -10,8 +10,6 @@ public record MemoryChainDto(
     UUID id,
     String userId,
     String topic,
-    String language,
-    String targetLanguage,
     List<String> rawItems,
     ChainStatus status,
     Instant createdAt,

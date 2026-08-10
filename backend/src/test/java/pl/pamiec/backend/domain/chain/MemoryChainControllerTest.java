@@ -60,13 +60,13 @@ class MemoryChainControllerTest {
         chainRepository.deleteAll();
 
         GeneratedStoryChain mockChain = new GeneratedStoryChain(List.of(
-            new GeneratedCardSegment(0, "perro", "A glowing neon perro dances on top of a giant sombrero.", "Surreal digital art of a glowing neon dog dancing on a giant hat"),
-            new GeneratedCardSegment(1, "gato", "Suddenly a floating space gato shoots lasers at the sombrero.", "Surreal art of a galactic cosmic cat shooting lasers in deep space")
+            new GeneratedCardSegment(0, "dog", "A glowing neon dog dances on top of a giant sombrero.", "Surreal digital art of a glowing neon dog dancing on a giant hat"),
+            new GeneratedCardSegment(1, "cat", "Suddenly a floating space cat shoots lasers at the sombrero.", "Surreal art of a galactic cosmic cat shooting lasers in deep space")
         ));
 
-        when(storyGeneratorEngine.generateStory(anyString(), anyString(), any())).thenReturn(mockChain);
+        when(storyGeneratorEngine.generateStory(anyString(), any())).thenReturn(mockChain);
         when(imageGeneratorEngine.generateImage(anyString())).thenReturn(new byte[]{1, 2, 3});
-        when(ttsGeneratorEngine.generateSpeech(anyString(), anyString())).thenReturn(new byte[]{1, 2, 3});
+        when(ttsGeneratorEngine.generateSpeech(anyString())).thenReturn(new byte[]{1, 2, 3});
         when(objectStorageService.uploadImage(any(), any(), anyString())).thenReturn("http://localhost:9000/pamiec-media/images/test.png");
     }
 
@@ -74,9 +74,8 @@ class MemoryChainControllerTest {
     void shouldCreateChainAndPersistToPostgres() throws Exception {
         String jsonPayload = """
             {
-                "topic": "Spanish Animals",
-                "targetLanguage": "Spanish",
-                "items": ["perro", "gato"]
+                "topic": "Animals",
+                "items": ["dog", "cat"]
             }
             """;
 
@@ -105,20 +104,20 @@ class MemoryChainControllerTest {
         assertThat(chain).isNotNull();
         assertThat(chain.getStatus()).isEqualTo(ChainStatus.COMPLETED);
         assertThat(chain.getCards()).hasSize(2);
-        assertThat(chain.getCards().get(0).getTargetItem()).isEqualTo("perro");
+        assertThat(chain.getCards().get(0).getTargetItem()).isEqualTo("dog");
         assertThat(chain.getCards().get(0).getImageUrl()).isEqualTo("http://localhost:9000/pamiec-media/images/test.png");
-        assertThat(chain.getCards().get(1).getTargetItem()).isEqualTo("gato");
+        assertThat(chain.getCards().get(1).getTargetItem()).isEqualTo("cat");
     }
 
     @Test
     void shouldSubscribeToSseStream() throws Exception {
-        MemoryChain chain = new MemoryChain("Spanish Animals", "Spanish", "perro,gato");
+        MemoryChain chain = new MemoryChain("Animals", "dog,cat");
         chain.setStatus(ChainStatus.COMPLETED);
         chain = chainRepository.save(chain);
 
-        StoryCard card1 = new StoryCard(chain, 0, "perro", "Neon dog on sombrero", "Surreal neon dog prompt");
+        StoryCard card1 = new StoryCard(chain, 0, "dog", "Neon dog on sombrero", "Surreal neon dog prompt");
         card1.setImageUrl("http://localhost:9000/pamiec-media/images/1.png");
-        StoryCard card2 = new StoryCard(chain, 1, "gato", "Cosmic cat with lasers", "Surreal cosmic cat prompt");
+        StoryCard card2 = new StoryCard(chain, 1, "cat", "Cosmic cat with lasers", "Surreal cosmic cat prompt");
         card2.setImageUrl("http://localhost:9000/pamiec-media/images/2.png");
         chain.addCard(card1);
         chain.addCard(card2);
@@ -133,8 +132,8 @@ class MemoryChainControllerTest {
         assertThat(sseOutput).contains("event:CHAIN_CREATED");
         assertThat(sseOutput).contains("event:CARD_GENERATED");
         assertThat(sseOutput).contains("event:CARD_IMAGE_GENERATED");
-        assertThat(sseOutput).contains("perro");
-        assertThat(sseOutput).contains("gato");
+        assertThat(sseOutput).contains("dog");
+        assertThat(sseOutput).contains("cat");
         assertThat(sseOutput).contains("event:CHAIN_COMPLETED");
     }
 }

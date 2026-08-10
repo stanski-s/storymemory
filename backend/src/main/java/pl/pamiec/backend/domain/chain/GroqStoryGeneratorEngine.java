@@ -37,17 +37,17 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
     }
 
     @Override
-    public GeneratedStoryChain generateStory(String topic, String language, List<String> items) {
-        log.info("Generating story chain for topic: '{}', language: '{}', items: {}", topic, language, items);
+    public GeneratedStoryChain generateStory(String topic, List<String> items) {
+        log.info("Generating story chain for topic: '{}', items: {}", topic, items);
 
         String effectiveApiKey = apiKey;
         if (effectiveApiKey == null || effectiveApiKey.isBlank()) {
             log.warn("GROQ_API_KEY is not set. Falling back to mock generator.");
-            return generateMockStoryChain(topic, language, items);
+            return generateMockStoryChain(topic, items);
         }
 
         try {
-            String systemPrompt = buildSystemPrompt(topic, language, items);
+            String systemPrompt = buildSystemPrompt(topic, items);
             String userPrompt = "Generate the memory chain for target items: " + String.join(", ", items);
 
             String endpointUrl = baseUrl.endsWith("/v1/chat/completions") ? baseUrl :
@@ -74,7 +74,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
 
             if (rawJsonResponse == null || rawJsonResponse.isBlank()) {
                 log.warn("Empty response received from Groq Cloud API. Falling back to mock.");
-                return generateMockStoryChain(topic, language, items);
+                return generateMockStoryChain(topic, items);
             }
 
             JsonNode rootNode = objectMapper.readTree(rawJsonResponse);
@@ -85,12 +85,11 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
 
         } catch (Exception e) {
             log.error("Failed to generate story using Groq Cloud AI: {}. Falling back to mock generator.", e.getMessage(), e);
-            return generateMockStoryChain(topic, language, items);
+            return generateMockStoryChain(topic, items);
         }
     }
 
-    private String buildSystemPrompt(String topic, String language, List<String> items) {
-        String effLang = (language != null && !language.isBlank()) ? language : "English";
+    private String buildSystemPrompt(String topic, List<String> items) {
         return """
             You are a master mnemonic storyteller creating absurd, vivid, and surreal sequential memory chains (Memory Palace / Link Method).
             The user wants to memorize a sequence of items in strict order for the topic '%s'.
@@ -99,7 +98,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
             1. LINKING METHOD STRUCTURE (Strict Sequential Coupling & No Forward Leakage):
                - Card 0 (for the 1st item): Introduce ONLY the 1st item in a vivid, absurd, visual setting. STRICTLY DO NOT introduce or mention any future items (2nd item, 3rd item, etc.) in Card 0!
                - Card i (for item i, where i > 0): Create a vivid interaction linking ONLY item[i-1] (the previous item) with item[i] (the current targetItem). STRICTLY DO NOT introduce or mention any future items (item[i+1], item[i+2], etc.) ahead of their turn!
-            2. The narrative MUST be in %s, vivid, visual, absurd, and funny to reinforce sequential memory retention.
+            2. The narrative MUST be in English, vivid, visual, absurd, and funny to reinforce sequential memory retention.
             3. The target item MUST be explicitly mentioned in the story segment text.
             4. Provide an 'imagePrompt' for each card specifically optimized for AI Text-to-Image models (like FLUX / Stable Diffusion):
                a. MUST be written in ENGLISH.
@@ -118,7 +117,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
                 }
               ]
             }
-            """.formatted(topic, effLang);
+            """.formatted(topic);
     }
 
     private GeneratedStoryChain parseJsonResponse(String rawResponse, List<String> items) {
@@ -138,11 +137,11 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
             return objectMapper.readValue(jsonStr, GeneratedStoryChain.class);
         } catch (JsonProcessingException e) {
             log.error("Failed to parse JSON from Groq LLM response: {}", e.getMessage());
-            return generateMockStoryChain("Memory Chain", "English", items);
+            return generateMockStoryChain("Memory Chain", items);
         }
     }
 
-    private GeneratedStoryChain generateMockStoryChain(String topic, String language, List<String> items) {
+    private GeneratedStoryChain generateMockStoryChain(String topic, List<String> items) {
         List<GeneratedCardSegment> mockCards = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             String item = items.get(i);

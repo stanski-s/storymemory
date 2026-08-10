@@ -20,9 +20,6 @@ public class MemoryChain {
     @Column(nullable = false)
     private String topic;
 
-    @Column(nullable = false)
-    private String language;
-
     @Column(name = "raw_items", nullable = false, columnDefinition = "TEXT")
     private String rawItems;
 
@@ -39,15 +36,14 @@ public class MemoryChain {
 
     public MemoryChain() {}
 
-    public MemoryChain(String userId, String topic, String language, String rawItems) {
+    public MemoryChain(String userId, String topic, String rawItems) {
         this.userId = userId != null ? userId : "00000000-0000-0000-0000-000000000000";
         this.topic = topic;
-        this.language = language;
         this.rawItems = rawItems;
     }
 
-    public MemoryChain(String topic, String language, String rawItems) {
-        this("00000000-0000-0000-0000-000000000000", topic, language, rawItems);
+    public MemoryChain(String topic, String rawItems) {
+        this("00000000-0000-0000-0000-000000000000", topic, rawItems);
     }
 
     public UUID getId() { return id; }
@@ -58,9 +54,6 @@ public class MemoryChain {
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
-
-    public String getLanguage() { return language; }
-    public void setLanguage(String language) { this.language = language; }
 
     public String getRawItems() { return rawItems; }
     public void setRawItems(String rawItems) { this.rawItems = rawItems; }

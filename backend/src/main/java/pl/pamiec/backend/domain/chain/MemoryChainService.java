@@ -43,11 +43,9 @@ public class MemoryChainService {
         this.objectStorageService = objectStorageService;
     }
 
-
     public CreateChainResponse createChain(CreateChainRequest request) {
         String rawItemsStr = String.join(",", request.items());
-        String effectiveLang = request.targetLanguage();
-        MemoryChain chain = new MemoryChain(request.userId(), request.topic(), effectiveLang, rawItemsStr);
+        MemoryChain chain = new MemoryChain(request.userId(), request.topic(), rawItemsStr);
         chain.setStatus(ChainStatus.GENERATING);
         MemoryChain savedChain = chainRepository.save(chain);
 
@@ -75,8 +73,6 @@ public class MemoryChainService {
                 Map<String, Object> createdData = Map.of(
                     "chainId", chain.getId(),
                     "topic", chain.getTopic(),
-                    "language", chain.getLanguage(),
-                    "targetLanguage", chain.getLanguage(),
                     "totalItems", Arrays.asList(chain.getRawItems().split(",")).size(),
                     "status", chain.getStatus().name()
                 );
@@ -117,7 +113,7 @@ public class MemoryChainService {
             .map(c -> new StoryCardDto(c.getId(), c.getSequenceIndex(), c.getTargetItem(), c.getStorySegment(), c.getImagePrompt(), c.getImageUrl(), c.getAudioUrl()))
             .toList();
 
-        return new MemoryChainDto(chain.getId(), chain.getUserId(), chain.getTopic(), chain.getLanguage(), chain.getLanguage(), rawItemsList, chain.getStatus(), chain.getCreatedAt(), cardDtos);
+        return new MemoryChainDto(chain.getId(), chain.getUserId(), chain.getTopic(), rawItemsList, chain.getStatus(), chain.getCreatedAt(), cardDtos);
     }
 
     private void processChainGeneration(UUID chainId, CreateChainRequest request) {
@@ -125,14 +121,12 @@ public class MemoryChainService {
             emitEvent(chainId, "CHAIN_CREATED", Map.of(
                 "chainId", chainId,
                 "topic", request.topic(),
-                "language", request.targetLanguage(),
-                "targetLanguage", request.targetLanguage(),
                 "totalItems", request.items().size(),
                 "status", "GENERATING"
             ));
 
             GeneratedStoryChain generatedChain = storyGeneratorEngine.generateStory(
-                request.topic(), request.targetLanguage(), request.items()
+                request.topic(), request.items()
             );
 
             MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
@@ -185,7 +179,7 @@ public class MemoryChainService {
                         
                         // Audio generation
                         try {
-                            byte[] audioBytes = ttsGeneratorEngine.generateSpeech(card.getStorySegment(), chain.getLanguage());
+                            byte[] audioBytes = ttsGeneratorEngine.generateSpeech(card.getStorySegment());
                             if (audioBytes != null && audioBytes.length > 0) {
                                 String audioUrl = objectStorageService.uploadAudio(card.getId(), audioBytes, "audio/mpeg");
                                 if (audioUrl != null && !audioUrl.isBlank()) {
@@ -256,8 +250,6 @@ public class MemoryChainService {
         data.put("message", "Failed to generate audio narration for the story");
         emitEvent(chainId, "CARD_AUDIO_FAILED", data);
     }
-
-
 
     private void emitEvent(UUID chainId, String eventName, Object data) {
         List<SseEmitter> emitters = emittersMap.get(chainId);

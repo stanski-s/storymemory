@@ -29,19 +29,17 @@ public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
     }
 
     @Override
-    public byte[] generateSpeech(String text, String language) {
+    public byte[] generateSpeech(String text) {
         if (text == null || text.isBlank()) {
             log.warn("Text for TTS is empty or null");
             return null;
         }
 
-        String voice = resolveVoice(language);
-
-        log.info("Generating Edge-TTS audio speech for language '{}' using voice '{}' (text length: {})",
-                language, voice, text.length());
+        log.info("Generating Edge-TTS audio speech using voice '{}' (text length: {})",
+                defaultVoice, text.length());
 
         try {
-            byte[] sidecarAudioBytes = synthesizeViaSidecar(text, voice);
+            byte[] sidecarAudioBytes = synthesizeViaSidecar(text, defaultVoice);
             if (sidecarAudioBytes != null && sidecarAudioBytes.length > 0) {
                 log.info("Successfully generated Edge-TTS Azure Neural audio via Python Sidecar (size: {} bytes)", sidecarAudioBytes.length);
                 return sidecarAudioBytes;
@@ -75,17 +73,6 @@ public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
         }
     }
 
-    private String resolveVoice(String language) {
-        if (language != null && !language.isBlank()) {
-            String trimmed = language.trim();
-            if (trimmed.contains("-") && trimmed.contains("Neural")) {
-                return trimmed;
-            }
-        }
-        return defaultVoice;
-    }
-
-
     private String escapeJson(String text) {
         if (text == null) return "\"\"";
         return "\"" + text.replace("\\", "\\\\")
@@ -97,4 +84,3 @@ public class EdgeTtsGeneratorEngine implements TtsGeneratorEngine {
                 .replace("\t", "\\t") + "\"";
     }
 }
-

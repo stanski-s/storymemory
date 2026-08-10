@@ -3,11 +3,10 @@ package pl.pamiec.backend.domain.tts;
 public interface TtsGeneratorEngine {
 
     /**
-     * Synthesizes audio speech from text for the given language.
+     * Synthesizes audio speech from text.
      *
-     * @param text     The card text narration to convert to speech.
-     * @param language The target language (e.g. "Polish", "English", "pl", "en").
+     * @param text The card text narration to convert to speech.
      * @return Raw MP3 binary audio bytes.
      */
-    byte[] generateSpeech(String text, String language);
+    byte[] generateSpeech(String text);
 }

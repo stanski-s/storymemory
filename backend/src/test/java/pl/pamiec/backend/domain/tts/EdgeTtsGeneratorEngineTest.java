@@ -15,11 +15,10 @@ class EdgeTtsGeneratorEngineTest {
         ttsEngine = new EdgeTtsGeneratorEngine("http://localhost:8090/api/tts", "en-US-AvaMultilingualNeural");
     }
 
-
     @Test
     @DisplayName("Should return null for blank text")
     void shouldReturnNullForBlankText() {
-        byte[] audio = ttsEngine.generateSpeech("", "Polish");
+        byte[] audio = ttsEngine.generateSpeech("");
 
         assertThat(audio).isNull();
     }
@@ -27,11 +26,10 @@ class EdgeTtsGeneratorEngineTest {
     @Test
     @DisplayName("Should return null when sidecar is unreachable")
     void shouldReturnNullWhenSidecarIsUnreachable() {
-        byte[] audio = ttsEngine.generateSpeech("Narration test in London.", "Polish");
+        byte[] audio = ttsEngine.generateSpeech("Narration test in London.");
 
         // Sidecar at localhost:8090 is not running during unit tests, should return null without throwing
         assertThat(audio).isNull();
     }
 
 }
-
