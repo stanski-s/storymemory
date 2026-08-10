@@ -13,6 +13,27 @@ interface Props {
 export function ChainStreamView({ chainId }: Props) {
   const stream = useMemoryChainStream(chainId);
   const [viewMode, setViewMode] = useState<"CAROUSEL" | "LIST">("CAROUSEL");
+  const [generatingCardId, setGeneratingCardId] = useState<string | null>(null);
+
+  const handleGenerateImageOnDemand = async (cardId: string) => {
+    try {
+      setGeneratingCardId(cardId);
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${baseUrl}/api/chains/${chainId}/cards/${cardId}/generate-image`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const updatedCard = await res.json();
+        if (updatedCard && updatedCard.imageUrl) {
+          stream.updateCardImage(cardId, updatedCard.imageUrl);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to generate image on demand:", err);
+    } finally {
+      setGeneratingCardId(null);
+    }
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
@@ -115,7 +136,11 @@ export function ChainStreamView({ chainId }: Props) {
 
       {/* Primary Display: TikTok Swipeable Carousel or List View */}
       {viewMode === "CAROUSEL" ? (
-        <StoryCardCarousel cards={stream.cards} isGenerating={stream.status === "GENERATING"} />
+        <StoryCardCarousel
+          cards={stream.cards}
+          isGenerating={stream.status === "GENERATING"}
+          onGenerateImageOnDemand={handleGenerateImageOnDemand}
+        />
       ) : (
         <div className="space-y-6">
           {stream.cards.map((card) => (
@@ -123,8 +148,8 @@ export function ChainStreamView({ chainId }: Props) {
               key={card.sequenceIndex}
               className="group relative p-6 rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10 flex flex-col md:flex-row gap-6 items-center"
             >
-              {/* Card Image Thumbnail or Skeleton */}
-              <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 flex-shrink-0 flex items-center justify-center">
+              {/* Card Image Thumbnail or Skeleton / On-demand */}
+              <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 flex-shrink-0 flex flex-col items-center justify-center relative">
                 {card.imageUrl ? (
                   <img
                     src={card.imageUrl}
@@ -132,9 +157,20 @@ export function ChainStreamView({ chainId }: Props) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="p-4 text-center text-xs text-slate-500 flex flex-col items-center">
-                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin mb-2" />
-                    <span>Generating image...</span>
+                  <div className="p-4 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                    <span className="text-slate-500">Scena kontynuowana</span>
+                    <button
+                      onClick={() => handleGenerateImageOnDemand(card.id)}
+                      disabled={generatingCardId === card.id}
+                      className="px-3 py-1.5 rounded-xl bg-purple-900/80 border border-purple-700/60 text-purple-200 hover:bg-purple-800 font-semibold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {generatingCardId === card.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                      )}
+                      <span>Generuj obrazek</span>
+                    </button>
                   </div>
                 )}
               </div>

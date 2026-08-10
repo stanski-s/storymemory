@@ -44,14 +44,21 @@ describe("StoryCardCarousel Component", () => {
     expect(img).toHaveAttribute("src", "http://localhost:9000/pamiec-media/images/card0.png");
   });
 
-  it("renders image skeleton when navigating to card without imageUrl", () => {
-    render(<StoryCardCarousel cards={mockCards} isGenerating={true} />);
+  it("renders inherited keyframe image and on-demand button when navigating to card without imageUrl", () => {
+    const onGenerate = vi.fn();
+    render(<StoryCardCarousel cards={mockCards} isGenerating={true} onGenerateImageOnDemand={onGenerate} />);
 
     const nextBtn = screen.getByRole("button", { name: /next/i });
     fireEvent.click(nextBtn);
 
     expect(screen.getByText("gato")).toBeInTheDocument();
-    expect(screen.getByText(/Generating surreal illustration/i)).toBeInTheDocument();
+    expect(screen.getByText("Scena kontynuowana")).toBeInTheDocument();
+
+    const generateBtn = screen.getByRole("button", { name: /Generuj obrazek dla tego słowa/i });
+    expect(generateBtn).toBeInTheDocument();
+
+    fireEvent.click(generateBtn);
+    expect(onGenerate).toHaveBeenCalled();
   });
 
   it("navigates card stack using vertical swipe gestures", () => {

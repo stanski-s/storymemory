@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { StoryCard } from "@/types/chain";
 
 export interface StreamState {
@@ -23,6 +23,8 @@ export function useMemoryChainStream(chainId: string | null) {
     progress: 0,
     error: null,
   });
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!chainId) return;
@@ -94,11 +96,18 @@ export function useMemoryChainStream(chainId: string | null) {
             }
             return c;
           });
-          return { ...prev, cards };
+          return {
+            ...prev,
+            cards,
+          };
         });
       } catch (err) {
         console.error("Error parsing CARD_IMAGE_GENERATED event", err);
       }
+    });
+
+    eventSource.addEventListener("PING", () => {
+      // Heartbeat ping from server keeping connection active
     });
 
     eventSource.addEventListener("CHAIN_COMPLETED", () => {
@@ -113,38 +122,91 @@ export function useMemoryChainStream(chainId: string | null) {
     eventSource.addEventListener("ERROR", (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        setState((prev) => ({
-          ...prev,
-          status: "FAILED",
-          error: data.message || "Failed to generate memory chain",
-        }));
+        setState((prev) => {
+          if (prev.cards.length > 0) return prev; // Do not fail UI if story cards exist
+          return {
+            ...prev,
+            status: "FAILED",
+            error: data.message || "Failed to generate memory chain",
+          };
+        });
       } catch {
-        setState((prev) => ({
-          ...prev,
-          status: "FAILED",
-          error: "Streaming error occurred",
-        }));
+        setState((prev) => {
+          if (prev.cards.length > 0) return prev;
+          return {
+            ...prev,
+            status: "FAILED",
+            error: "Streaming error occurred",
+          };
+        });
       }
       eventSource.close();
     });
 
     eventSource.onerror = (err) => {
-      console.error("EventSource failed:", err);
+      console.warn("EventSource connection notice:", err);
+      // NEVER fail the UI if we already received story cards!
       setState((prev) => {
-        if (prev.status === "COMPLETED") return prev;
-        return {
-          ...prev,
-          status: "FAILED",
-          error: "Connection lost with story stream service",
-        };
+        if (prev.cards.length > 0) {
+          return prev;
+        }
+        return prev;
       });
-      eventSource.close();
     };
+
+    // Fallback polling loop to sync with DB state every 3s in case SSE pauses or disconnects
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/chains/${chainId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.cards && data.cards.length > 0) {
+            setState((prev) => {
+              const updatedCards: StoryCard[] = data.cards.map((c: { id: string; sequenceIndex: number; targetItem: string; storySegment: string; imagePrompt: string; imageUrl?: string }) => ({
+                id: c.id,
+                sequenceIndex: c.sequenceIndex,
+                targetItem: c.targetItem,
+                storySegment: c.storySegment,
+                imagePrompt: c.imagePrompt,
+                imageUrl: c.imageUrl || null,
+              }));
+
+              const isCompleted = data.status === "COMPLETED";
+              return {
+                ...prev,
+                cards: updatedCards,
+                topic: data.topic || prev.topic,
+                targetLanguage: data.targetLanguage || prev.targetLanguage,
+                totalItems: data.rawItems ? data.rawItems.length : prev.totalItems,
+                status: isCompleted ? "COMPLETED" : prev.status === "COMPLETED" ? "COMPLETED" : "GENERATING",
+                progress: isCompleted ? 100 : Math.min(100, Math.round((updatedCards.length / (data.rawItems?.length || 1)) * 100)),
+              };
+            });
+
+            if (data.status === "COMPLETED") {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Fallback polling notice:", err);
+      }
+    }, 3000);
 
     return () => {
       eventSource.close();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
     };
   }, [chainId]);
 
-  return state;
+  const updateCardImage = (cardId: string, imageUrl: string) => {
+    setState((prev) => ({
+      ...prev,
+      cards: prev.cards.map((c) => (c.id === cardId ? { ...c, imageUrl } : c)),
+    }));
+  };
+
+  return { ...state, updateCardImage };
 }

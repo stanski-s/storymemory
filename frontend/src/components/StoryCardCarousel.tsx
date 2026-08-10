@@ -8,10 +8,12 @@ import { ChevronUp, ChevronDown, Sparkles, Image as ImageIcon, Loader2, RefreshC
 interface StoryCardCarouselProps {
   cards: StoryCard[];
   isGenerating?: boolean;
+  onGenerateImageOnDemand?: (cardId: string) => Promise<void>;
 }
 
-export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCarouselProps) {
+export function StoryCardCarousel({ cards, isGenerating = false, onGenerateImageOnDemand }: StoryCardCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isGeneratingCardId, setIsGeneratingCardId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,12 +32,19 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
       <div className="w-full h-96 rounded-3xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl">
         <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
         <p className="text-slate-300 font-semibold">Generating your surreal memory cards...</p>
-        <p className="text-xs text-slate-500 mt-1">Connecting to Spring AI & Hugging Face pipeline</p>
+        <p className="text-xs text-slate-500 mt-1">Connecting to Spring AI & Cloudflare Workers AI</p>
       </div>
     );
   }
 
   const activeCard = cards[currentIndex] || cards[0];
+
+  // Find nearest preceding keyframe image for visual inheritance
+  const inheritedImageUrl = activeCard.imageUrl
+    ? activeCard.imageUrl
+    : cards.slice(0, currentIndex).reverse().find((c) => c.imageUrl)?.imageUrl ||
+      cards.find((c) => c.imageUrl)?.imageUrl ||
+      null;
 
   const handleNext = () => {
     if (currentIndex < cards.length - 1) {
@@ -54,6 +63,16 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
       handleNext();
     } else if (info.offset.y > 50) {
       handlePrev();
+    }
+  };
+
+  const handleGenerateClick = async (cardId: string) => {
+    if (!onGenerateImageOnDemand || isGeneratingCardId) return;
+    try {
+      setIsGeneratingCardId(cardId);
+      await onGenerateImageOnDemand(cardId);
+    } finally {
+      setIsGeneratingCardId(null);
     }
   };
 
@@ -95,7 +114,7 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="absolute inset-0 flex flex-col justify-between p-6 cursor-grab active:cursor-grabbing"
           >
-            {/* Background Image or Loading Skeleton */}
+            {/* Background Image or Inherited Keyframe Image or Skeleton */}
             <div className="absolute inset-0 z-0 bg-slate-950">
               {activeCard.imageUrl ? (
                 <motion.img
@@ -106,17 +125,26 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
                   alt={activeCard.targetItem}
                   className="w-full h-full object-cover object-center"
                 />
+              ) : inheritedImageUrl ? (
+                <div className="relative w-full h-full">
+                  <img
+                    src={inheritedImageUrl}
+                    alt={activeCard.targetItem}
+                    className="w-full h-full object-cover object-center blur-[3px] scale-105 opacity-60"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/40 to-slate-950/90" />
+                </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-slate-900 via-purple-950/20 to-slate-950 border border-purple-900/20 animate-pulse">
                   <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/40 text-purple-400 mb-3">
                     <Loader2 className="w-8 h-8 animate-spin" />
                   </div>
-                  <span className="text-sm font-medium text-slate-300">Generating surreal illustration...</span>
-                  <span className="text-xs text-purple-400/80 mt-1">FLUX.1-schnell model via Hugging Face</span>
+                  <span className="text-sm font-medium text-slate-300">Generating keyframe illustration...</span>
+                  <span className="text-xs text-purple-400/80 mt-1">Cloudflare Workers AI (FLUX.1 Schnell)</span>
                 </div>
               )}
-              {/* Dark Gradient Overlay for Readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30" />
+              {/* Subtle Gradient Overlay for Readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
             </div>
 
             {/* Top Card Badge & Meta Header */}
@@ -128,6 +156,11 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
                 <span className="px-3.5 py-1 rounded-xl bg-indigo-950/90 border border-indigo-800/60 text-sm font-extrabold text-white backdrop-blur-md shadow-lg shadow-indigo-950/40">
                   {activeCard.targetItem}
                 </span>
+                {!activeCard.imageUrl && inheritedImageUrl && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-950/80 border border-amber-700/50 text-[10px] font-medium text-amber-300 backdrop-blur-md">
+                    Scena kontynuowana
+                  </span>
+                )}
               </div>
               <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/60 text-purple-400 backdrop-blur-md">
                 <Sparkles className="w-4 h-4" />
@@ -148,6 +181,27 @@ export function StoryCardCarousel({ cards, isGenerating = false }: StoryCardCaro
                     <span className="italic text-slate-400">{activeCard.imagePrompt}</span>
                   </div>
                 </div>
+
+                {/* On-Demand Image Generation Button for Intermediate Cards */}
+                {!activeCard.imageUrl && (
+                  <button
+                    onClick={() => handleGenerateClick(activeCard.id)}
+                    disabled={isGeneratingCardId === activeCard.id}
+                    className="w-full mt-2 py-2 px-3 rounded-xl bg-purple-900/60 hover:bg-purple-800/80 border border-purple-700/50 text-xs font-semibold text-purple-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isGeneratingCardId === activeCard.id ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
+                        <span>Generuję obrazek dla słowa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                        <span>Generuj obrazek dla tego słowa</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
