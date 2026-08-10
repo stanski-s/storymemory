@@ -72,10 +72,10 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="w-full h-96 rounded-3xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin mb-4" />
-        <p className="text-slate-300 font-semibold">Generating your surreal memory cards...</p>
-        <p className="text-xs text-slate-500 mt-1">Connecting to Spring AI & Edge TTS</p>
+      <div className="w-full h-96 rounded-2xl bg-[#ffffff] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] flex flex-col items-center justify-center p-8 text-center">
+        <Loader2 className="w-8 h-8 text-[#4648d4] animate-spin mb-4" />
+        <p className="font-display text-lg font-extrabold text-[#1b1c15]">Generating your surreal memory cards...</p>
+        <p className="font-mono-label text-xs text-[#767586] mt-1">Connecting to Spring AI & Edge TTS</p>
       </div>
     );
   }
@@ -156,19 +156,19 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
       />
 
       {/* Top Controls: Slide Progress Bar & Audio Player Bar */}
-      <div className="w-full space-y-3 mb-4 px-2">
-        {/* Progress Bar */}
-        <div className="w-full flex items-center justify-between gap-1">
+      <div className="w-full space-y-3 mb-4 px-1">
+        {/* Progress Segmented Bar */}
+        <div className="w-full flex items-center justify-between gap-1.5">
           {cards.map((card, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              className={`h-2.5 flex-1 rounded-full border border-[#1b1c15] transition-all duration-300 ${
                 idx === currentIndex
-                  ? "bg-purple-400 shadow-sm shadow-purple-500/50"
+                  ? "bg-[#fdc425] shadow-[2px_2px_0px_0px_#1b1c15]"
                   : idx < currentIndex
-                  ? "bg-purple-900/80"
-                  : "bg-slate-800"
+                  ? "bg-[#4648d4]"
+                  : "bg-[#e9e9dd]"
               }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
@@ -176,13 +176,13 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
         </div>
 
         {/* Audio Player Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-[#ffffff] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15]">
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlayPause}
               disabled={!activeCard.audioUrl}
               aria-label={isPlaying ? "Pause audio" : "Play audio"}
-              className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 transition-all shadow-md shadow-purple-950/40 cursor-pointer disabled:cursor-not-allowed"
+              className="p-2.5 rounded-xl bg-[#4648d4] hover:bg-[#6063ee] text-[#ffffff] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] brutal-btn disabled:opacity-40 transition-all cursor-pointer disabled:cursor-not-allowed"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>
@@ -190,30 +190,30 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
             <button
               onClick={toggleMute}
               aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+              className="p-2.5 rounded-xl bg-[#f5f4e8] hover:bg-[#efeee3] text-[#1b1c15] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] brutal-btn transition-colors cursor-pointer"
             >
-              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-slate-300" />}
+              {isMuted ? <VolumeX className="w-4 h-4 text-[#ba1a1a]" /> : <Volume2 className="w-4 h-4 text-[#1b1c15]" />}
             </button>
 
             {/* Audio Waveform Indicator */}
             {isPlaying && (
               <div className="flex items-center gap-1 h-4 px-2">
-                <span className="w-0.5 h-full bg-purple-400 animate-pulse" />
-                <span className="w-0.5 h-2/3 bg-indigo-400 animate-bounce" />
-                <span className="w-0.5 h-4/5 bg-purple-300 animate-pulse" />
+                <span className="w-1 h-full bg-[#4648d4] animate-pulse" />
+                <span className="w-1 h-2/3 bg-[#fdc425] animate-bounce" />
+                <span className="w-1 h-4/5 bg-[#00873b] animate-pulse" />
               </div>
             )}
 
             {!activeCard.audioUrl && (
-              <span className="text-xs text-amber-400 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-800/40">
+              <span className="font-mono-label text-xs font-bold text-[#6d5200] flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#fdc425] border-2 border-[#1b1c15]">
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                    <Loader2 className="w-3 h-3 animate-spin text-[#1b1c15]" />
                     <span>Generating audio...</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#1b1c15] flex-shrink-0" />
                     <span>Failed to generate audio narration for the story</span>
                   </>
                 )}
@@ -224,31 +224,30 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
           {/* Auto-Advance Toggle */}
           <button
             onClick={() => setAutoAdvance(!autoAdvance)}
-            className={`px-3 py-1 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl border-2 border-[#1b1c15] font-mono-label text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               autoAdvance
-                ? "bg-purple-950/80 border-purple-700/60 text-purple-200"
-                : "bg-slate-950/60 border-slate-800 text-slate-400"
+                ? "bg-[#6bff8f] text-[#002109] shadow-[2px_2px_0px_0px_#1b1c15]"
+                : "bg-[#f5f4e8] text-[#767586]"
             }`}
           >
-            <Radio className={`w-3.5 h-3.5 ${autoAdvance ? "text-purple-400 animate-pulse" : "text-slate-500"}`} />
+            <Radio className={`w-3.5 h-3.5 ${autoAdvance ? "text-[#00873b] animate-pulse" : "text-[#767586]"}`} />
             <span>Auto-Advance</span>
           </button>
         </div>
 
         {/* Global Audio Error Banner */}
         {audioError && (
-          <div className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-amber-950/80 border border-amber-700/60 text-amber-200 text-xs shadow-lg backdrop-blur-md">
-            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-            <span className="font-medium">{audioError}</span>
+          <div className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#ffdad6] border-2 border-[#ba1a1a] text-[#93000a] font-mono-label text-xs font-bold shadow-[4px_4px_0px_0px_#ba1a1a]">
+            <AlertTriangle className="w-4 h-4 text-[#ba1a1a] flex-shrink-0" />
+            <span>{audioError}</span>
           </div>
         )}
       </div>
 
-
       {/* Vertical TikTok-Style Swipe Container */}
       <div
         data-testid="swipe-container"
-        className="relative w-full aspect-[9/14] rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl shadow-purple-950/20"
+        className="relative w-full aspect-[9/14] rounded-2xl overflow-hidden bg-[#ffffff] border-4 border-[#1b1c15] shadow-[10px_10px_0px_0px_#1b1c15]"
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -257,19 +256,19 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
-            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            initial={{ opacity: 0, y: 30, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.96 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="absolute inset-0 flex flex-col justify-between p-6 cursor-grab active:cursor-grabbing"
+            exit={{ opacity: 0, y: -30, scale: 0.97 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="absolute inset-0 flex flex-col justify-between p-5 cursor-grab active:cursor-grabbing"
           >
-            {/* Background Image or Inherited Keyframe Image or Skeleton */}
-            <div className="absolute inset-0 z-0 bg-slate-950">
+            {/* Background Keyframe Image / Blur Overlay / Skeleton */}
+            <div className="absolute inset-0 z-0 bg-[#f5f4e8]">
               {activeCard.imageUrl ? (
                 <motion.img
-                  initial={{ opacity: 0, scale: 1.05 }}
+                  initial={{ opacity: 0, scale: 1.03 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.4 }}
                   src={activeCard.imageUrl}
                   alt={activeCard.targetItem}
                   className="w-full h-full object-cover object-center"
@@ -279,73 +278,73 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
                   <img
                     src={inheritedImageUrl}
                     alt={activeCard.targetItem}
-                    className="w-full h-full object-cover object-center blur-[3px] scale-105 opacity-60"
+                    className="w-full h-full object-cover object-center blur-[6px] scale-105 opacity-50 grayscale-[40%]"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/40 to-slate-950/90" />
+                  <div className="absolute inset-0 bg-[#fbfaee]/60 halftone-bg" />
                 </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-slate-900 via-purple-950/20 to-slate-950 border border-purple-900/20 animate-pulse">
-                  <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/40 text-purple-400 mb-3">
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-[#f5f4e8] border-2 border-[#1b1c15] animate-pulse">
+                  <div className="p-4 rounded-xl bg-[#fdc425] border-2 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] text-[#1b1c15] mb-3">
                     <Loader2 className="w-8 h-8 animate-spin" />
                   </div>
-                  <span className="text-sm font-medium text-slate-300">Generating keyframe illustration...</span>
-                  <span className="text-xs text-purple-400/80 mt-1">Cloudflare Workers AI (FLUX.1 Schnell)</span>
+                  <span className="font-display text-base font-bold text-[#1b1c15]">Generating keyframe illustration...</span>
+                  <span className="font-mono-label text-xs text-[#4648d4] mt-1">Cloudflare Workers AI (FLUX.1 Schnell)</span>
                 </div>
               )}
-              {/* Subtle Gradient Overlay for Readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
+              {/* Gradient Overlay for Text Readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1b1c15]/90 via-[#1b1c15]/30 to-transparent pointer-events-none" />
             </div>
 
             {/* Top Card Badge & Meta Header */}
             <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-xl bg-purple-950/90 border border-purple-800/60 text-xs font-bold text-purple-300 backdrop-blur-md">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 rounded-lg bg-[#4648d4] text-[#ffffff] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] font-mono-label text-xs font-bold">
                   Step {activeCard.sequenceIndex + 1} of {cards.length}
                 </span>
-                <span className="px-3.5 py-1 rounded-xl bg-indigo-950/90 border border-indigo-800/60 text-sm font-extrabold text-white backdrop-blur-md shadow-lg shadow-indigo-950/40">
+                <span className="px-3.5 py-1 rounded-lg bg-[#fdc425] text-[#6d5200] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] font-display text-base font-extrabold tracking-wide">
                   {activeCard.targetItem}
                 </span>
                 {!activeCard.imageUrl && inheritedImageUrl && (
-                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-950/80 border border-amber-700/50 text-[10px] font-medium text-amber-300 backdrop-blur-md">
+                  <span className="px-2.5 py-1 rounded-md bg-[#6bff8f] text-[#002109] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] font-mono-label text-[10px] font-bold">
                     Continued scene
                   </span>
                 )}
               </div>
-              <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/60 text-purple-400 backdrop-blur-md">
-                <Sparkles className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] text-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15]">
+                <Sparkles className="w-4 h-4 text-[#4648d4]" />
               </div>
             </div>
 
-            {/* Bottom Card Narrative & Visual Prompt Container */}
-            <div className="relative z-10 space-y-4 pt-12">
-              <div className="p-5 rounded-2xl bg-slate-900/85 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-3">
-                <p className="text-base text-slate-100 leading-relaxed font-sans font-medium">
+            {/* Bottom Card Narrative Box */}
+            <div className="relative z-10 space-y-3 pt-12">
+              <div className="p-5 rounded-2xl bg-[#ffffff] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] space-y-3">
+                <p className="font-body text-base text-[#1b1c15] leading-relaxed font-semibold">
                   {activeCard.storySegment}
                 </p>
 
-                <div className="flex items-start gap-2 pt-2 border-t border-slate-800/60 text-xs text-slate-400">
-                  <ImageIcon className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 pt-2 border-t-2 border-[#1b1c15]/20 font-mono-label text-xs text-[#464554]">
+                  <ImageIcon className="w-4 h-4 text-[#4648d4] flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-300">Prompt: </span>
-                    <span className="italic text-slate-400">{activeCard.imagePrompt}</span>
+                    <span className="font-bold text-[#1b1c15]">Prompt: </span>
+                    <span className="italic">{activeCard.imagePrompt}</span>
                   </div>
                 </div>
 
-                {/* On-Demand Image Generation Button for Intermediate Cards */}
+                {/* On-Demand Image Generation Button */}
                 {!activeCard.imageUrl && (
                   <button
                     onClick={() => activeCard.id && handleGenerateClick(activeCard.id)}
                     disabled={!activeCard.id || isGeneratingCardId === activeCard.id}
-                    className="w-full mt-2 py-2 px-3 rounded-xl bg-purple-900/60 hover:bg-purple-800/80 border border-purple-700/50 text-xs font-semibold text-purple-200 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#4648d4] hover:bg-[#6063ee] text-[#ffffff] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn font-mono-label text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isGeneratingCardId === activeCard.id ? (
                       <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
+                        <Loader2 className="w-4 h-4 animate-spin text-[#ffffff]" />
                         <span>Generating image...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                        <Sparkles className="w-4 h-4 text-[#fdc425]" />
                         <span>Generate image for this card</span>
                       </>
                     )}
@@ -356,13 +355,13 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
           </motion.div>
         </AnimatePresence>
 
-        {/* Side Swipe / Navigation Buttons for Desktop */}
+        {/* Side Controls for Navigation */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-3">
           <button
             onClick={handlePrev}
             disabled={currentIndex === 0}
             aria-label="Previous card"
-            className="p-3 rounded-full bg-slate-900/80 border border-slate-700/60 text-slate-200 hover:bg-purple-900/80 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-900/80 transition-all backdrop-blur-md shadow-lg"
+            className="p-3 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] text-[#1b1c15] hover:bg-[#fdc425] disabled:opacity-30 transition-all brutal-btn cursor-pointer"
           >
             <ChevronUp className="w-5 h-5" />
           </button>
@@ -370,7 +369,7 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
             onClick={handleNext}
             disabled={currentIndex === cards.length - 1}
             aria-label="Next card"
-            className="p-3 rounded-full bg-slate-900/80 border border-slate-700/60 text-slate-200 hover:bg-purple-900/80 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-900/80 transition-all backdrop-blur-md shadow-lg"
+            className="p-3 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] text-[#1b1c15] hover:bg-[#fdc425] disabled:opacity-30 transition-all brutal-btn cursor-pointer"
           >
             <ChevronDown className="w-5 h-5" />
           </button>
@@ -378,10 +377,10 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
       </div>
 
       {/* Navigation Keyboard Hint */}
-      <div className="mt-3 text-xs text-slate-500 flex items-center gap-2">
-        <span>Space: Play/Pause | Arrow Keys (↑ / ↓): Navigate</span>
+      <div className="mt-3 font-mono-label text-xs text-[#767586] flex items-center gap-3">
+        <span>Space: Play/Pause | Arrows (↑ / ↓): Navigate</span>
         {isGenerating && (
-          <span className="inline-flex items-center gap-1 text-purple-400">
+          <span className="inline-flex items-center gap-1 text-[#4648d4] font-bold">
             <RefreshCw className="w-3 h-3 animate-spin" />
             Streaming cards...
           </span>
@@ -390,4 +389,5 @@ export function StoryCardCarousel({ cards, isGenerating = false, audioError, onG
     </div>
   );
 }
+
 

@@ -36,23 +36,26 @@ export function ChainStreamView({ chainId }: Props) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Top Header & Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 font-mono-label text-xs font-bold text-[#1b1c15] bg-[#ffffff] px-4 py-2 rounded-xl border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn transition-all w-fit"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-[#4648d4]" />
           <span>Back to Generator</span>
         </Link>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-3">
           {/* View Mode Toggle */}
-          <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+          <div className="flex items-center p-1 rounded-xl bg-[#efeee3] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15]">
             <button
               onClick={() => setViewMode("CAROUSEL")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors font-medium ${
-                viewMode === "CAROUSEL" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-label text-xs font-bold transition-all cursor-pointer ${
+                viewMode === "CAROUSEL"
+                  ? "bg-[#4648d4] text-[#ffffff] shadow-[2px_2px_0px_0px_#1b1c15] border border-[#1b1c15]"
+                  : "text-[#464554] hover:text-[#1b1c15]"
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -60,8 +63,10 @@ export function ChainStreamView({ chainId }: Props) {
             </button>
             <button
               onClick={() => setViewMode("LIST")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors font-medium ${
-                viewMode === "LIST" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-slate-200"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono-label text-xs font-bold transition-all cursor-pointer ${
+                viewMode === "LIST"
+                  ? "bg-[#4648d4] text-[#ffffff] shadow-[2px_2px_0px_0px_#1b1c15] border border-[#1b1c15]"
+                  : "text-[#464554] hover:text-[#1b1c15]"
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -69,49 +74,53 @@ export function ChainStreamView({ chainId }: Props) {
             </button>
           </div>
 
+          {/* Status Badges */}
           {stream.status === "GENERATING" && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/30 text-purple-300">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-label text-xs font-bold bg-[#fdc425] text-[#6d5200] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#1b1c15] animate-ping" />
               Live Stream
             </span>
           )}
           {stream.status === "COMPLETED" && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-label text-xs font-bold bg-[#6bff8f] text-[#002109] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15]">
+              <CheckCircle2 className="w-4 h-4 text-[#00873b]" />
               Completed
             </span>
           )}
           {stream.status === "FAILED" && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 border border-red-500/30 text-red-300">
-              <AlertCircle className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-label text-xs font-bold bg-[#ffdad6] text-[#93000a] border-2 border-[#ba1a1a] shadow-[3px_3px_0px_0px_#ba1a1a]">
+              <AlertCircle className="w-4 h-4 text-[#ba1a1a]" />
               Error
             </span>
           )}
         </div>
       </div>
 
-      {/* Main Chain Card Header */}
-      <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl shadow-xl space-y-4">
+      {/* Main Chain Header Panel */}
+      <div className="bg-[#ffffff] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl space-y-4 relative">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            <span className="font-mono-label text-xs font-bold uppercase tracking-wider text-[#767586] block mb-1">
+              MEMORY CHAIN
+            </span>
+            <h1 className="font-display text-3xl font-extrabold text-[#1b1c15] tracking-tight">
               {stream.topic || "Generating Memory Chain..."}
             </h1>
           </div>
-          <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40 text-purple-400">
+          <div className="p-3 rounded-xl bg-[#fdc425] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] text-[#1b1c15] -rotate-3">
             <Sparkles className="w-6 h-6" />
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400">
+        {/* Comic Progress Bar */}
+        <div className="space-y-2 pt-2">
+          <div className="flex justify-between font-mono-label text-xs font-bold text-[#1b1c15]">
             <span>Progress: {stream.cards.length} of {stream.totalItems || "..."} cards</span>
             <span>{stream.progress}%</span>
           </div>
-          <div className="w-full h-3 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+          <div className="w-full h-5 rounded-full bg-[#f5f4e8] border-2 border-[#1b1c15] overflow-hidden p-0.5 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.1)]">
             <div
-              className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-400 transition-all duration-500 ease-out"
+              className="h-full bg-[#4648d4] halftone-bg-primary rounded-full transition-all duration-500 ease-out border border-[#1b1c15]"
               style={{ width: `${stream.progress}%` }}
             />
           </div>
@@ -120,16 +129,16 @@ export function ChainStreamView({ chainId }: Props) {
 
       {/* Error Alert */}
       {stream.error && (
-        <div className="p-4 rounded-2xl bg-red-950/60 border border-red-800/60 text-red-200 text-sm flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+        <div className="p-4 rounded-2xl bg-[#ffdad6] border-4 border-[#ba1a1a] shadow-[6px_6px_0px_0px_#ba1a1a] text-[#93000a] font-body text-sm font-semibold flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-[#ba1a1a] flex-shrink-0" />
           <div>
-            <p className="font-semibold">Generation Failed</p>
-            <p className="text-xs text-red-300">{stream.error}</p>
+            <p className="font-display font-bold">Generation Failed</p>
+            <p className="font-body text-xs text-[#ba1a1a]">{stream.error}</p>
           </div>
         </div>
       )}
 
-      {/* Primary Display: TikTok Swipeable Carousel or List View */}
+      {/* Primary Display: Story Card Carousel or List View */}
       {viewMode === "CAROUSEL" ? (
         <StoryCardCarousel
           cards={stream.cards}
@@ -138,15 +147,14 @@ export function ChainStreamView({ chainId }: Props) {
           onGenerateImageOnDemand={handleGenerateImageOnDemand}
         />
       ) : (
-
         <div className="space-y-6">
           {stream.cards.map((card) => (
             <div
               key={card.sequenceIndex}
-              className="group relative p-6 rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-purple-500/40 hover:shadow-purple-500/10 flex flex-col md:flex-row gap-6 items-center"
+              className="relative p-6 rounded-2xl bg-[#ffffff] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] flex flex-col md:flex-row gap-6 items-center hover:translate-x-[2px] hover:translate-y-[2px] transition-transform"
             >
               {/* Card Image Thumbnail or Skeleton / On-demand */}
-              <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 flex-shrink-0 flex flex-col items-center justify-center relative">
+              <div className="w-full md:w-52 h-52 rounded-xl overflow-hidden bg-[#f5f4e8] border-2 border-[#1b1c15] flex-shrink-0 flex flex-col items-center justify-center relative shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.05)]">
                 {card.imageUrl ? (
                   <img
                     src={card.imageUrl}
@@ -154,43 +162,42 @@ export function ChainStreamView({ chainId }: Props) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="p-4 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
-                    <span className="text-slate-500">Continued scene</span>
+                  <div className="p-4 text-center font-mono-label text-xs text-[#767586] flex flex-col items-center gap-2">
+                    <span className="font-bold text-[#1b1c15]">Continued scene</span>
                     <button
                       onClick={() => card.id && handleGenerateImageOnDemand(card.id)}
                       disabled={!card.id || generatingCardId === card.id}
-                      className="px-3 py-1.5 rounded-xl bg-purple-900/80 border border-purple-700/60 text-purple-200 hover:bg-purple-800 font-semibold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg bg-[#4648d4] text-[#ffffff] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] brutal-btn font-mono-label text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {generatingCardId === card.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ffffff]" />
                       ) : (
-                        <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                        <Sparkles className="w-3.5 h-3.5 text-[#fdc425]" />
                       )}
                       <span>Generate image</span>
                     </button>
                   </div>
-
                 )}
               </div>
 
               <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-xl bg-purple-950/80 border border-purple-800/50 text-xs font-semibold text-purple-300">
+                  <span className="px-3 py-1 rounded-lg bg-[#4648d4] text-[#ffffff] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] font-mono-label text-xs font-bold">
                     Step {card.sequenceIndex + 1}
                   </span>
-                  <span className="px-3.5 py-1 rounded-xl bg-indigo-950/80 border border-indigo-800/50 text-sm font-bold text-indigo-200 tracking-wide">
+                  <span className="px-3.5 py-1 rounded-lg bg-[#fdc425] text-[#6d5200] border-2 border-[#1b1c15] shadow-[2px_2px_0px_0px_#1b1c15] font-display text-lg font-extrabold tracking-wide">
                     {card.targetItem}
                   </span>
                 </div>
 
-                <p className="text-base text-slate-100 leading-relaxed font-sans font-medium">
+                <p className="font-body text-base text-[#1b1c15] leading-relaxed font-medium">
                   {card.storySegment}
                 </p>
 
-                <div className="flex items-start gap-2 p-3 rounded-2xl bg-slate-950/50 border border-slate-800/60 text-xs text-slate-400">
-                  <ImageIcon className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-[#f5f4e8] border-2 border-[#1b1c15] font-mono-label text-xs text-[#464554]">
+                  <ImageIcon className="w-4 h-4 text-[#4648d4] flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-300">Visual Prompt: </span>
+                    <span className="font-bold text-[#1b1c15]">Visual Prompt: </span>
                     <span className="italic">{card.imagePrompt}</span>
                   </div>
                 </div>
@@ -200,16 +207,16 @@ export function ChainStreamView({ chainId }: Props) {
 
           {/* Loading Skeleton Card */}
           {stream.status === "GENERATING" && (
-            <div className="p-6 rounded-3xl bg-slate-900/30 border border-dashed border-slate-800/80 animate-pulse space-y-4">
+            <div className="p-6 rounded-2xl bg-[#efeee3] border-4 border-dashed border-[#1b1c15] animate-pulse space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-16 h-6 rounded-xl bg-slate-800" />
-                <div className="w-24 h-6 rounded-xl bg-slate-800" />
+                <div className="w-16 h-6 rounded-lg bg-[#dbdbcf] border-2 border-[#1b1c15]" />
+                <div className="w-24 h-6 rounded-lg bg-[#dbdbcf] border-2 border-[#1b1c15]" />
               </div>
-              <div className="h-4 bg-slate-800 rounded w-3/4" />
-              <div className="h-4 bg-slate-800 rounded w-1/2" />
-              <div className="flex items-center gap-2 pt-2">
-                <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                <span className="text-xs text-slate-400">LLM is crafting next surreal segment...</span>
+              <div className="h-4 bg-[#dbdbcf] rounded w-3/4" />
+              <div className="h-4 bg-[#dbdbcf] rounded w-1/2" />
+              <div className="flex items-center gap-2 pt-2 font-mono-label text-xs text-[#1b1c15]">
+                <Loader2 className="w-4 h-4 text-[#4648d4] animate-spin" />
+                <span>LLM is crafting next surreal segment...</span>
               </div>
             </div>
           )}
@@ -218,4 +225,5 @@ export function ChainStreamView({ chainId }: Props) {
     </div>
   );
 }
+
 

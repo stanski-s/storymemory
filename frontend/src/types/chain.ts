@@ -11,7 +11,6 @@ export interface StoryCard {
 export interface MemoryChain {
   id: string;
   topic: string;
-  targetLanguage: string;
   rawItems: string[];
   status: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
   createdAt: string;
@@ -20,6 +19,5 @@ export interface MemoryChain {
 
 export interface CreateChainPayload {
   topic: string;
-  targetLanguage: string;
   items: string[];
 }

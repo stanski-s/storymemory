@@ -42,72 +42,80 @@ export function HealthCheck() {
   }, []);
 
   return (
-    <div className="glass-card rounded-2xl p-6 transition-all duration-300">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <Server className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-100">Backend Infrastructure Status</h3>
-            <p className="text-xs text-gray-400">Java 25 & Spring Boot 4 REST Endpoint</p>
-          </div>
-        </div>
-
-        <button
-          onClick={fetchHealth}
-          disabled={!mounted || loading}
-          className="p-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/60 text-gray-300 hover:text-white transition-all disabled:opacity-50"
-          title="Refresh Health Status"
-          id="refresh-health-btn"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`} />
-        </button>
+    <div className="relative w-full my-4">
+      {/* Panel Cap / Badge */}
+      <div className="absolute -top-4 left-4 z-20 bg-[#4648d4] text-[#ffffff] border-2 border-[#1b1c15] px-3 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#1b1c15] -rotate-1 rounded-md">
+        SYSTEM STATUS
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-        {/* Status Box */}
-        <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
+      <div className="bg-[#efeee3] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl relative">
+        <div className="flex items-center justify-between mb-4 pt-1">
           <div className="flex items-center space-x-3">
-            {!mounted || loading ? (
-              <Activity className="w-5 h-5 text-yellow-400 animate-pulse" />
-            ) : error ? (
-              <XCircle className="w-5 h-5 text-rose-500" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            )}
+            <div className="p-2.5 rounded-xl bg-[#fdc425] text-[#1b1c15] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] -rotate-2">
+              <Server className="w-5 h-5" />
+            </div>
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Status</p>
-              <p className={`text-sm font-semibold ${error ? "text-rose-400" : "text-emerald-400"}`}>
-                {!mounted || loading ? "Checking..." : error ? "OFFLINE" : health?.status || "HEALTHY"}
-              </p>
+              <h3 className="font-display text-lg font-bold text-[#1b1c15]">Backend Infrastructure Status</h3>
+              <p className="font-mono-label text-xs text-[#464554]">Java 25 & Spring Boot 4 REST Endpoint</p>
             </div>
           </div>
+
+          <button
+            onClick={fetchHealth}
+            disabled={!mounted || loading}
+            className="p-2.5 rounded-xl bg-[#ffffff] hover:bg-[#f5f4e8] text-[#1b1c15] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn transition-all disabled:opacity-50 cursor-pointer"
+            title="Refresh Health Status"
+            id="refresh-health-btn"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#4648d4]" : ""}`} />
+          </button>
         </div>
 
-        {/* Virtual Threads Box */}
-        <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Cpu className="w-5 h-5 text-purple-400" />
-            <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Virtual Threads</p>
-              <p className="text-sm font-semibold text-purple-300">
-                {mounted && health?.virtualThreadsEnabled ? "ENABLED (Loom)" : "Disabled / Unknown"}
-              </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          {/* Status Box */}
+          <div className="p-4 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {!mounted || loading ? (
+                <Activity className="w-5 h-5 text-[#785a00] animate-pulse" />
+              ) : error ? (
+                <XCircle className="w-5 h-5 text-[#ba1a1a]" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-[#00873b]" />
+              )}
+              <div>
+                <p className="font-mono-label text-[11px] font-bold text-[#767586] uppercase tracking-wider">Status</p>
+                <p className={`font-display text-sm font-extrabold ${error ? "text-[#ba1a1a]" : "text-[#00873b]"}`}>
+                  {!mounted || loading ? "Checking..." : error ? "OFFLINE" : health?.status || "HEALTHY"}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Timestamp / Error Box */}
-        <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Last Sync</p>
-            <p className="text-xs font-mono text-gray-300 truncate max-w-[180px]">
-              {error ? error : (mounted && health?.timestamp) ? new Date(health.timestamp).toLocaleTimeString() : "--"}
-            </p>
+          {/* Virtual Threads Box */}
+          <div className="p-4 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Cpu className="w-5 h-5 text-[#4648d4]" />
+              <div>
+                <p className="font-mono-label text-[11px] font-bold text-[#767586] uppercase tracking-wider">Virtual Threads</p>
+                <p className="font-display text-sm font-extrabold text-[#4648d4]">
+                  {mounted && health?.virtualThreadsEnabled ? "ENABLED (Loom)" : "Disabled / Unknown"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Timestamp / Error Box */}
+          <div className="p-4 rounded-xl bg-[#ffffff] border-2 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] flex items-center justify-between">
+            <div>
+              <p className="font-mono-label text-[11px] font-bold text-[#767586] uppercase tracking-wider">Last Sync</p>
+              <p className="font-mono-label text-xs text-[#1b1c15] truncate max-w-[180px] font-semibold">
+                {error ? error : (mounted && health?.timestamp) ? new Date(health.timestamp).toLocaleTimeString() : "--"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -6,7 +6,6 @@ import { StoryCard } from "@/types/chain";
 export interface StreamState {
   status: "IDLE" | "CONNECTING" | "GENERATING" | "COMPLETED" | "FAILED";
   topic: string;
-  targetLanguage: string;
   totalItems: number;
   cards: StoryCard[];
   progress: number;
@@ -18,7 +17,6 @@ export function useMemoryChainStream(chainId: string | null) {
   const [state, setState] = useState<StreamState>({
     status: "IDLE",
     topic: "",
-    targetLanguage: "",
     totalItems: 0,
     cards: [],
     progress: 0,
@@ -44,7 +42,6 @@ export function useMemoryChainStream(chainId: string | null) {
           ...prev,
           status: "GENERATING",
           topic: data.topic || prev.topic,
-          targetLanguage: data.targetLanguage || prev.targetLanguage,
           totalItems: data.totalItems || prev.totalItems,
         }));
       } catch (err) {
@@ -147,9 +144,6 @@ export function useMemoryChainStream(chainId: string | null) {
       }
     });
 
-
-
-
     eventSource.addEventListener("PING", () => {
       // Heartbeat ping from server keeping connection active
     });
@@ -189,7 +183,6 @@ export function useMemoryChainStream(chainId: string | null) {
 
     eventSource.onerror = (err) => {
       console.warn("EventSource connection notice:", err);
-      // NEVER fail the UI if we already received story cards!
       setState((prev) => {
         if (prev.cards.length > 0) {
           return prev;
@@ -216,13 +209,11 @@ export function useMemoryChainStream(chainId: string | null) {
                 audioUrl: c.audioUrl || null,
               }));
 
-
               const isCompleted = data.status === "COMPLETED";
               return {
                 ...prev,
                 cards: updatedCards,
                 topic: data.topic || prev.topic,
-                targetLanguage: data.targetLanguage || prev.targetLanguage,
                 totalItems: data.rawItems ? data.rawItems.length : prev.totalItems,
                 status: isCompleted ? "COMPLETED" : prev.status === "COMPLETED" ? "COMPLETED" : "GENERATING",
                 progress: isCompleted ? 100 : Math.min(100, Math.round((updatedCards.length / (data.rawItems?.length || 1)) * 100)),

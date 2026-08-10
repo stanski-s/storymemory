@@ -1,57 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Work+Sans:ital,wght@0,400..700;1,400..700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #090d16;
-  --foreground: #f3f4f6;
-  --card: #111827;
-  --card-border: rgba(255, 255, 255, 0.1);
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --accent-purple: #8b5cf6;
-  --accent-pink: #ec4899;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
+  --font-bricolage: "Bricolage Grotesque", system-ui, -apple-system, sans-serif;
+  --font-work-sans: "Work Sans", system-ui, -apple-system, sans-serif;
+  --font-space-mono: "Space Mono", monospace;
+
+
+  --background: #fbfaee;
+  --on-background: #1b1c15;
+  --surface: #fbfaee;
+  --surface-container-low: #f5f4e8;
+  --surface-container: #efeee3;
+  --surface-container-high: #e9e9dd;
+  --surface-container-lowest: #ffffff;
+  --primary: #4648d4;
+  --primary-container: #6063ee;
+  --on-primary: #ffffff;
+  --secondary: #785a00;
+  --secondary-container: #fdc425;
+  --on-secondary-container: #6d5200;
+  --tertiary: #006b2d;
+  --tertiary-container: #00873b;
+  --tertiary-fixed: #6bff8f;
+  --on-tertiary-fixed: #002109;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --outline: #767586;
 }
 
 body {
   background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  color: var(--on-background);
+  font-family: var(--font-work-sans);
   min-height: 100vh;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.12) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%);
-  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Glassmorphism utilities */
-.glass-panel {
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Typography Utility Classes */
+.font-display {
+  font-family: var(--font-bricolage);
 }
 
-.glass-card {
-  background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.font-body {
+  font-family: var(--font-work-sans);
 }
 
-.glass-card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.12);
+.font-mono-label {
+  font-family: var(--font-space-mono);
 }
 
-.text-gradient {
-  background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 50%, #f472b6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+
+/* Paper Grain Texture Overlay */
+.paper-grain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.15;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
 }
 
-.text-gradient-cyan {
-  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Halftone Pattern Background */
+.halftone-bg {
+  background-image: radial-gradient(circle, #1b1c15 1.5px, transparent 2px);
+  background-size: 14px 14px;
+  opacity: 0.06;
 }
+
+.halftone-bg-primary {
+  background-image: radial-gradient(circle, #4648d4 2px, transparent 2.5px);
+  background-size: 10px 10px;
+}
+
+/* Neo-Brutalist Borders & Pop-Art Hard Shadows */
+.comic-border {
+  border: 4px solid #1b1c15;
+}
+
+.comic-border-thin {
+  border: 2px solid #1b1c15;
+}
+
+.brutal-shadow-sm {
+  box-shadow: 4px 4px 0px 0px #1b1c15;
+}
+
+.brutal-shadow-md {
+  box-shadow: 6px 6px 0px 0px #1b1c15;
+}
+
+.brutal-shadow-lg {
+  box-shadow: 8px 8px 0px 0px #1b1c15;
+}
+
+.brutal-shadow-xl {
+  box-shadow: 12px 12px 0px 0px #1b1c15;
+}
+
+/* Interactive Brutalist Button Press */
+.brutal-btn {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.brutal-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px #1b1c15;
+}
+
+.brutal-btn:active {
+  transform: translate(4px, 4px) !important;
+  box-shadow: 0px 0px 0px 0px #1b1c15 !important;
+}
+
+/* Comic Input Focus State */
+.comic-input:focus {
+  background-image: radial-gradient(circle, rgba(70, 72, 212, 0.08) 1px, transparent 1.5px);
+  background-size: 8px 8px;
+}
+
+/* Floating Animations */
+@keyframes float1 {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes float2 {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(-4deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+  75% { transform: rotate(-1deg); }
+}
+
+.animate-float-1 { animation: float1 6s ease-in-out infinite; }
+.animate-float-2 { animation: float2 8s ease-in-out infinite reverse; }
+.animate-wiggle:hover { animation: wiggle 0.4s ease-in-out infinite; }
+
