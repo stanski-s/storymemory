@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ChainCreateForm } from "./ChainCreateForm";
+import { AuthProvider } from "@/context/AuthContext";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -12,24 +13,47 @@ vi.mock("next/navigation", () => ({
 describe("ChainCreateForm Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            accessToken: "mock-token",
+            user: { id: "user-1", email: "test@example.com", displayName: "Test User" },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ id: "123e4567-e89b-12d3-a456-426614174000", status: "GENERATING" }),
+      });
+    });
   });
 
-  it("renders form elements correctly", () => {
-    render(<ChainCreateForm />);
-    expect(screen.getByText(/Create Mnemonic Memory Chain/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Solar System Planets/i)).toBeInTheDocument();
+  it("renders form elements correctly", async () => {
+    render(
+      <AuthProvider>
+        <ChainCreateForm />
+      </AuthProvider>
+    );
 
-    expect(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Create Mnemonic Memory Chain/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Solar System Planets/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i })).toBeInTheDocument();
+    });
   });
 
   it("submits target items and redirects to /chains/[id]", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: "123e4567-e89b-12d3-a456-426614174000", status: "GENERATING" }),
-    });
+    render(
+      <AuthProvider>
+        <ChainCreateForm />
+      </AuthProvider>
+    );
 
-    render(<ChainCreateForm />);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Solar System Planets/i)).toBeInTheDocument();
+    });
 
     fireEvent.change(screen.getByPlaceholderText(/Solar System Planets/i), {
       target: { value: "Solar System Planets" },
@@ -38,7 +62,6 @@ describe("ChainCreateForm Component", () => {
     fireEvent.change(screen.getByPlaceholderText(/Mercury/i), {
       target: { value: "Mercury\nVenus" },
     });
-
 
     fireEvent.click(screen.getByRole("button", { name: /Generate Surreal Memory Chain/i }));
 

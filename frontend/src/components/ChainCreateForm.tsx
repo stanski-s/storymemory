@@ -28,7 +28,7 @@ export function ChainCreateForm() {
       .filter((i) => i.length > 0);
 
     if (items.length === 0) {
-      setError("Podaj co najmniej 1 pojęcie do zapamiętania.");
+      setError("Please provide at least 1 item to learn.");
       return;
     }
 
@@ -40,7 +40,7 @@ export function ChainCreateForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: topic.trim() || "Łańcuch Pamięciowy",
+          topic: topic.trim() || "Memory Chain",
           items,
         }),
       });
@@ -50,21 +50,21 @@ export function ChainCreateForm() {
           router.push("/login?returnUrl=/");
           return;
         }
-        throw new Error(`Serwer zwrócił kod ${res.status}`);
+        throw new Error(`Server returned status ${res.status}`);
       }
 
       const data = await res.json();
       if (data.id) {
         router.push(`/chains/${data.id}`);
       } else {
-        throw new Error("Nieprawidłowy format odpowiedzi z serwera");
+        throw new Error("Invalid response format from server");
       }
     } catch (err: unknown) {
       console.error(err);
       setError(
         err instanceof Error
           ? err.message
-          : "Nie udało się rozpocząć generowania historii",
+          : "Failed to initiate story generation",
       );
       setLoading(false);
     }
@@ -85,10 +85,10 @@ export function ChainCreateForm() {
           </div>
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-extrabold text-[#1b1c15] leading-tight tracking-tight">
-              Stwórz Łańcuch Mnemotechniczny
+              Create Mnemonic Memory Chain
             </h2>
             <p className="font-body text-sm text-[#464554] mt-0.5">
-              Sztuczna inteligencja wygeneruje abstrakcyjną opowieść i obrazy łączące Twoje pojęcia.
+              AI-powered surreal story generation connecting your target items into a sequential visual memory hook.
             </p>
           </div>
         </div>
@@ -103,11 +103,11 @@ export function ChainCreateForm() {
           <div className="flex flex-col gap-2">
             <label className="font-display text-lg font-bold text-[#1b1c15] flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-[#4648d4]" />
-              Nazwa Tematu / Kategoria
+              Topic / Category Name
             </label>
             <input
               type="text"
-              placeholder="np. Planety Układu Słonecznego, Słówka Niemieckie, Chemia"
+              placeholder="e.g. Solar System Planets, German Vocabulary, Chemistry"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-4 font-body text-base text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.06)] transition-colors"
@@ -118,18 +118,18 @@ export function ChainCreateForm() {
           <div className="flex flex-col gap-2">
             <label className="font-display text-lg font-bold text-[#1b1c15] flex items-center gap-2">
               <ListOrdered className="w-4 h-4 text-[#00873b]" />
-              Pojęcia do Zapamiętania (oddzielone przecinkami lub nową linią)
+              Target Items to Memorize in Order (comma or line separated)
             </label>
             <textarea
               rows={4}
-              placeholder="Merkury&#10;Wenus&#10;Ziemia&#10;Mars"
+              placeholder="Mercury&#10;Venus&#10;Earth&#10;Mars"
               value={itemsRaw}
               onChange={(e) => setItemsRaw(e.target.value)}
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-4 font-mono-label text-sm text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.06)] transition-colors resize-none"
               required
             />
             <p className="font-mono-label text-xs text-[#767586] mt-1">
-              Wprowadź pojęcia w kolejności. AI ułoży z nich jeden spójny, wyrazisty ciąg skojarzeń.
+              Enter each item on a new line or separated by commas. The AI story will connect them sequentially.
             </p>
           </div>
 
@@ -141,17 +141,17 @@ export function ChainCreateForm() {
             {loading ? (
               <>
                 <Loader2 className="w-6 h-6 animate-spin text-[#1b1c15]" />
-                <span>Uruchamianie Strumienia AI...</span>
+                <span>Initiating AI Story Stream...</span>
               </>
             ) : !user ? (
               <>
                 <LogIn className="w-6 h-6 group-hover:rotate-6 transition-transform text-[#1b1c15]" />
-                <span>Zaloguj się, aby Wygenerować Łańcuch</span>
+                <span>Sign In to Generate Chain</span>
               </>
             ) : (
               <>
                 <Wand2 className="w-6 h-6 group-hover:rotate-12 transition-transform text-[#1b1c15]" />
-                <span>Wygeneruj Łańcuch Pamięciowy</span>
+                <span>Generate Surreal Memory Chain</span>
               </>
             )}
           </button>

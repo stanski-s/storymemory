@@ -9,12 +9,15 @@ import Link from "next/link";
 import { Dumbbell } from "lucide-react";
 import { RecallGym } from "@/components/RecallGym";
 
+import { useAuth } from "@/context/AuthContext";
+
 interface Props {
   chainId: string;
 }
 
 export function ChainStreamView({ chainId }: Props) {
   const stream = useMemoryChainStream(chainId);
+  const { authenticatedFetch } = useAuth();
   const [viewMode, setViewMode] = useState<"CAROUSEL" | "LIST" | "RECALL">("CAROUSEL");
   const [generatingCardId, setGeneratingCardId] = useState<string | null>(null);
 
@@ -22,7 +25,7 @@ export function ChainStreamView({ chainId }: Props) {
     try {
       setGeneratingCardId(cardId);
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/chains/${chainId}/cards/${cardId}/generate-image`, {
+      const res = await authenticatedFetch(`${baseUrl}/api/chains/${chainId}/cards/${cardId}/generate-image`, {
         method: "POST",
       });
       if (res.ok) {
