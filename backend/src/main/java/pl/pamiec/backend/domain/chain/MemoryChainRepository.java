@@ -7,4 +7,6 @@ import java.util.UUID;
 
 @Repository
 public interface MemoryChainRepository extends JpaRepository<MemoryChain, UUID> {
+    java.util.List<MemoryChain> findByUserIdOrderByCreatedAtDesc(String userId);
+    long countByUserId(String userId);
 }

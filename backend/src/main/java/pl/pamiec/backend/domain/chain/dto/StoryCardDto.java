@@ -10,4 +10,16 @@ public record StoryCardDto(
     String imagePrompt,
     String imageUrl,
     String audioUrl
-) {}
+) {
+    public static StoryCardDto fromEntity(pl.pamiec.backend.domain.chain.StoryCard card) {
+        return new StoryCardDto(
+                card.getId(),
+                card.getSequenceIndex(),
+                card.getTargetItem(),
+                card.getStorySegment(),
+                card.getImagePrompt(),
+                card.getImageUrl(),
+                card.getAudioUrl()
+        );
+    }
+}

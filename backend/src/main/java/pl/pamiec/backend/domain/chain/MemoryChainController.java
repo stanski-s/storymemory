@@ -11,6 +11,8 @@ import pl.pamiec.backend.domain.chain.dto.MemoryChainDto;
 import pl.pamiec.backend.domain.chain.dto.StoryCardDto;
 
 
+import org.springframework.security.core.Authentication;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,20 +21,42 @@ import java.util.UUID;
 public class MemoryChainController {
 
     private final MemoryChainService chainService;
+    private final MemoryChainRepository chainRepository;
 
-    public MemoryChainController(MemoryChainService chainService) {
+    public MemoryChainController(MemoryChainService chainService, MemoryChainRepository chainRepository) {
         this.chainService = chainService;
+        this.chainRepository = chainRepository;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<MemoryChainDto>> getUserChains(Authentication authentication) {
+        String userId = authentication != null ? authentication.getName() : "00000000-0000-0000-0000-000000000000";
+        List<MemoryChainDto> chains = chainRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(MemoryChainDto::fromEntity)
+                .toList();
+        return ResponseEntity.ok(chains);
     }
 
     @PostMapping
-    public ResponseEntity<CreateChainResponse> createChain(@RequestBody CreateChainRequest request) {
-        CreateChainResponse response = chainService.createChain(request);
+    public ResponseEntity<CreateChainResponse> createChain(@RequestBody CreateChainRequest request, Authentication authentication) {
+        String userId = (authentication != null && authentication.getName() != null)
+                ? authentication.getName()
+                : request.userId();
+        CreateChainRequest userRequest = new CreateChainRequest(userId, request.topic(), request.items());
+        CreateChainResponse response = chainService.createChain(userRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MemoryChainDto> getChain(@PathVariable("id") UUID id) {
+    public ResponseEntity<MemoryChainDto> getChain(@PathVariable("id") UUID id, Authentication authentication) {
         MemoryChainDto chainDto = chainService.getChain(id);
+        if (authentication != null && authentication.getName() != null) {
+            String currentUserId = authentication.getName();
+            if (chainDto.userId() != null && !chainDto.userId().equals("00000000-0000-0000-0000-000000000000") && !chainDto.userId().equalsIgnoreCase(currentUserId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
         return ResponseEntity.ok(chainDto);
     }
 
