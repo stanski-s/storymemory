@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, BookOpen, ListOrdered, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, BookOpen, ListOrdered, Loader2, Wand2, LogIn } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export function ChainCreateForm() {
   const router = useRouter();
+  const { user, authenticatedFetch } = useAuth();
   const [topic, setTopic] = useState("");
   const [itemsRaw, setItemsRaw] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,45 +17,54 @@ export function ChainCreateForm() {
     e.preventDefault();
     setError(null);
 
+    if (!user) {
+      router.push("/login?returnUrl=/");
+      return;
+    }
+
     const items = itemsRaw
       .split(/[\n,]/)
       .map((i) => i.trim())
       .filter((i) => i.length > 0);
 
     if (items.length === 0) {
-      setError("Please provide at least 1 item to learn.");
+      setError("Podaj co najmniej 1 pojęcie do zapamiętania.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/chains`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const res = await authenticatedFetch(`${baseUrl}/api/chains`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: topic.trim() || "Memory Chain",
+          topic: topic.trim() || "Łańcuch Pamięciowy",
           items,
         }),
       });
 
       if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`);
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login?returnUrl=/");
+          return;
+        }
+        throw new Error(`Serwer zwrócił kod ${res.status}`);
       }
 
       const data = await res.json();
       if (data.id) {
         router.push(`/chains/${data.id}`);
       } else {
-        throw new Error("Invalid response format from server");
+        throw new Error("Nieprawidłowy format odpowiedzi z serwera");
       }
     } catch (err: unknown) {
       console.error(err);
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to initiate story generation",
+          : "Nie udało się rozpocząć generowania historii",
       );
       setLoading(false);
     }
@@ -74,11 +85,10 @@ export function ChainCreateForm() {
           </div>
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-extrabold text-[#1b1c15] leading-tight tracking-tight">
-              Create Mnemonic Memory Chain
+              Stwórz Łańcuch Mnemotechniczny
             </h2>
             <p className="font-body text-sm text-[#464554] mt-0.5">
-              AI-powered surreal story generation connecting your target items
-              into a sequential visual memory hook.
+              Sztuczna inteligencja wygeneruje abstrakcyjną opowieść i obrazy łączące Twoje pojęcia.
             </p>
           </div>
         </div>
@@ -93,11 +103,11 @@ export function ChainCreateForm() {
           <div className="flex flex-col gap-2">
             <label className="font-display text-lg font-bold text-[#1b1c15] flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-[#4648d4]" />
-              Topic / Category Name
+              Nazwa Tematu / Kategoria
             </label>
             <input
               type="text"
-              placeholder="e.g. Solar System Planets, USA Presidents, Grocery List"
+              placeholder="np. Planety Układu Słonecznego, Słówka Niemieckie, Chemia"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-4 font-body text-base text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.06)] transition-colors"
@@ -108,36 +118,40 @@ export function ChainCreateForm() {
           <div className="flex flex-col gap-2">
             <label className="font-display text-lg font-bold text-[#1b1c15] flex items-center gap-2">
               <ListOrdered className="w-4 h-4 text-[#00873b]" />
-              Target Items to Memorize in Order (comma or line separated)
+              Pojęcia do Zapamiętania (oddzielone przecinkami lub nową linią)
             </label>
             <textarea
               rows={4}
-              placeholder="Mercury&#10;Venus&#10;Earth&#10;Mars"
+              placeholder="Merkury&#10;Wenus&#10;Ziemia&#10;Mars"
               value={itemsRaw}
               onChange={(e) => setItemsRaw(e.target.value)}
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-4 font-mono-label text-sm text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.06)] transition-colors resize-none"
               required
             />
             <p className="font-mono-label text-xs text-[#767586] mt-1">
-              Enter each item on a new line or separated by commas. The AI story
-              will connect them sequentially.
+              Wprowadź pojęcia w kolejności. AI ułoży z nich jeden spójny, wyrazisty ciąg skojarzeń.
             </p>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="group w-full py-5 px-6 rounded-xl font-display text-xl md:text-2xl font-extrabold text-[#6d5200] bg-[#fdc425] hover:bg-[#f7be1d] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all animate-wiggle"
+            className="group w-full py-5 px-6 rounded-xl font-display text-xl md:text-2xl font-extrabold text-[#1b1c15] bg-[#fdc425] hover:bg-[#f7be1d] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn uppercase flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all animate-wiggle"
           >
             {loading ? (
               <>
                 <Loader2 className="w-6 h-6 animate-spin text-[#1b1c15]" />
-                <span>Initiating AI Story Stream...</span>
+                <span>Uruchamianie Strumienia AI...</span>
+              </>
+            ) : !user ? (
+              <>
+                <LogIn className="w-6 h-6 group-hover:rotate-6 transition-transform text-[#1b1c15]" />
+                <span>Zaloguj się, aby Wygenerować Łańcuch</span>
               </>
             ) : (
               <>
                 <Wand2 className="w-6 h-6 group-hover:rotate-12 transition-transform text-[#1b1c15]" />
-                <span>Generate Surreal Memory Chain</span>
+                <span>Wygeneruj Łańcuch Pamięciowy</span>
               </>
             )}
           </button>

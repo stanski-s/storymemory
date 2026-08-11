@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { StoryCard } from "@/types/chain";
+import { useAuth } from "@/context/AuthContext";
 
 export interface StreamState {
   status: "IDLE" | "CONNECTING" | "GENERATING" | "COMPLETED" | "FAILED";
@@ -14,6 +15,7 @@ export interface StreamState {
 }
 
 export function useMemoryChainStream(chainId: string | null) {
+  const { getSseTicket } = useAuth();
   const [state, setState] = useState<StreamState>({
     status: "IDLE",
     topic: "",
@@ -29,169 +31,180 @@ export function useMemoryChainStream(chainId: string | null) {
   useEffect(() => {
     if (!chainId) return;
 
-    setState((prev) => ({ ...prev, status: "CONNECTING", error: null, audioError: null }));
+    let eventSource: EventSource | null = null;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    const sseUrl = `${baseUrl}/api/chains/${chainId}/stream`;
-    const eventSource = new EventSource(sseUrl);
+    async function initStream() {
+      setState((prev) => ({ ...prev, status: "CONNECTING", error: null, audioError: null }));
 
-    eventSource.addEventListener("CHAIN_CREATED", (event: MessageEvent) => {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      let sseUrl = `${baseUrl}/api/chains/${chainId}/stream`;
+
       try {
-        const data = JSON.parse(event.data);
-        setState((prev) => ({
-          ...prev,
-          status: "GENERATING",
-          topic: data.topic || prev.topic,
-          totalItems: data.totalItems || prev.totalItems,
-        }));
-      } catch (err) {
-        console.error("Error parsing CHAIN_CREATED event", err);
-      }
-    });
-
-    eventSource.addEventListener("CARD_GENERATED", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        const newCard: StoryCard = {
-          id: data.cardId,
-          sequenceIndex: data.sequenceIndex,
-          targetItem: data.targetItem,
-          storySegment: data.storySegment,
-          imagePrompt: data.imagePrompt,
-          imageUrl: data.imageUrl || null,
-        };
-
-        setState((prev) => {
-          const existing = prev.cards.find((c) => c.sequenceIndex === newCard.sequenceIndex);
-          const updatedCard = existing ? { ...existing, ...newCard, imageUrl: newCard.imageUrl || existing.imageUrl } : newCard;
-          const cards = existing
-            ? prev.cards.map((c) => (c.sequenceIndex === newCard.sequenceIndex ? updatedCard : c))
-            : [...prev.cards, updatedCard].sort((a, b) => a.sequenceIndex - b.sequenceIndex);
-
-          const progress = prev.totalItems > 0 ? Math.min(100, Math.round((cards.length / prev.totalItems) * 100)) : 50;
-
-          return {
-            ...prev,
-            cards,
-            progress,
-            status: "GENERATING",
-          };
-        });
-      } catch (err) {
-        console.error("Error parsing CARD_GENERATED event", err);
-      }
-    });
-
-    eventSource.addEventListener("CARD_IMAGE_GENERATED", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        const sequenceIndex = data.sequenceIndex;
-        const imageUrl = data.imageUrl;
-
-        setState((prev) => {
-          const cards = prev.cards.map((c) => {
-            if (c.sequenceIndex === sequenceIndex) {
-              return { ...c, imageUrl: imageUrl || c.imageUrl };
-            }
-            return c;
-          });
-          return {
-            ...prev,
-            cards,
-          };
-        });
-      } catch (err) {
-        console.error("Error parsing CARD_IMAGE_GENERATED event", err);
-      }
-    });
-
-    eventSource.addEventListener("CARD_AUDIO_GENERATED", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        const sequenceIndex = data.sequenceIndex;
-        const audioUrl = data.audioUrl;
-
-        setState((prev) => {
-          const cards = prev.cards.map((c) => {
-            if (c.sequenceIndex === sequenceIndex) {
-              return { ...c, audioUrl: audioUrl || c.audioUrl };
-            }
-            return c;
-          });
-          return {
-            ...prev,
-            cards,
-          };
-        });
-      } catch (err) {
-        console.error("Error parsing CARD_AUDIO_GENERATED event", err);
-      }
-    });
-
-    eventSource.addEventListener("CARD_AUDIO_FAILED", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        setState((prev) => ({
-          ...prev,
-          audioError: data.message || "Failed to generate audio narration for the story",
-        }));
-      } catch (err) {
-        console.error("Error parsing CARD_AUDIO_FAILED event", err);
-        setState((prev) => ({
-          ...prev,
-          audioError: "Failed to generate audio narration for the story",
-        }));
-      }
-    });
-
-    eventSource.addEventListener("PING", () => {
-      // Heartbeat ping from server keeping connection active
-    });
-
-    eventSource.addEventListener("CHAIN_COMPLETED", () => {
-      setState((prev) => ({
-        ...prev,
-        status: "COMPLETED",
-        progress: 100,
-      }));
-      eventSource.close();
-    });
-
-    eventSource.addEventListener("ERROR", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        setState((prev) => {
-          if (prev.cards.length > 0) return prev; // Do not fail UI if story cards exist
-          return {
-            ...prev,
-            status: "FAILED",
-            error: data.message || "Failed to generate memory chain",
-          };
-        });
-      } catch {
-        setState((prev) => {
-          if (prev.cards.length > 0) return prev;
-          return {
-            ...prev,
-            status: "FAILED",
-            error: "Streaming error occurred",
-          };
-        });
-      }
-      eventSource.close();
-    });
-
-    eventSource.onerror = (err) => {
-      console.warn("EventSource connection notice:", err);
-      setState((prev) => {
-        if (prev.cards.length > 0) {
-          return prev;
+        const ticket = await getSseTicket();
+        if (ticket) {
+          sseUrl += `?ticket=${encodeURIComponent(ticket)}`;
         }
-        return prev;
-      });
-    };
+      } catch (e) {
+        console.warn("Could not get SSE ticket, attempting connection without ticket:", e);
+      }
 
-    // Fallback polling loop to sync with DB state every 3s in case SSE pauses or disconnects
+      eventSource = new EventSource(sseUrl);
+
+      eventSource.addEventListener("CHAIN_CREATED", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setState((prev) => ({
+            ...prev,
+            status: "GENERATING",
+            topic: data.topic || prev.topic,
+            totalItems: data.totalItems || prev.totalItems,
+          }));
+        } catch (err) {
+          console.error("Error parsing CHAIN_CREATED event", err);
+        }
+      });
+
+      eventSource.addEventListener("CARD_GENERATED", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          const newCard: StoryCard = {
+            id: data.cardId,
+            sequenceIndex: data.sequenceIndex,
+            targetItem: data.targetItem,
+            storySegment: data.storySegment,
+            imagePrompt: data.imagePrompt,
+            imageUrl: data.imageUrl || null,
+          };
+
+          setState((prev) => {
+            const existing = prev.cards.find((c) => c.sequenceIndex === newCard.sequenceIndex);
+            const updatedCard = existing ? { ...existing, ...newCard, imageUrl: newCard.imageUrl || existing.imageUrl } : newCard;
+            const cards = existing
+              ? prev.cards.map((c) => (c.sequenceIndex === newCard.sequenceIndex ? updatedCard : c))
+              : [...prev.cards, updatedCard].sort((a, b) => a.sequenceIndex - b.sequenceIndex);
+
+            const progress = prev.totalItems > 0 ? Math.min(100, Math.round((cards.length / prev.totalItems) * 100)) : 50;
+
+            return {
+              ...prev,
+              cards,
+              progress,
+              status: "GENERATING",
+            };
+          });
+        } catch (err) {
+          console.error("Error parsing CARD_GENERATED event", err);
+        }
+      });
+
+      eventSource.addEventListener("CARD_IMAGE_GENERATED", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          const sequenceIndex = data.sequenceIndex;
+          const imageUrl = data.imageUrl;
+
+          setState((prev) => {
+            const cards = prev.cards.map((c) => {
+              if (c.sequenceIndex === sequenceIndex) {
+                return { ...c, imageUrl: imageUrl || c.imageUrl };
+              }
+              return c;
+            });
+            return {
+              ...prev,
+              cards,
+            };
+          });
+        } catch (err) {
+          console.error("Error parsing CARD_IMAGE_GENERATED event", err);
+        }
+      });
+
+      eventSource.addEventListener("CARD_AUDIO_GENERATED", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          const sequenceIndex = data.sequenceIndex;
+          const audioUrl = data.audioUrl;
+
+          setState((prev) => {
+            const cards = prev.cards.map((c) => {
+              if (c.sequenceIndex === sequenceIndex) {
+                return { ...c, audioUrl: audioUrl || c.audioUrl };
+              }
+              return c;
+            });
+            return {
+              ...prev,
+              cards,
+            };
+          });
+        } catch (err) {
+          console.error("Error parsing CARD_AUDIO_GENERATED event", err);
+        }
+      });
+
+      eventSource.addEventListener("CARD_AUDIO_FAILED", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setState((prev) => ({
+            ...prev,
+            audioError: data.message || "Failed to generate audio narration for the story",
+          }));
+        } catch (err) {
+          console.error("Error parsing CARD_AUDIO_FAILED event", err);
+          setState((prev) => ({
+            ...prev,
+            audioError: "Failed to generate audio narration for the story",
+          }));
+        }
+      });
+
+      eventSource.addEventListener("PING", () => {
+        // Heartbeat ping
+      });
+
+      eventSource.addEventListener("CHAIN_COMPLETED", () => {
+        setState((prev) => ({
+          ...prev,
+          status: "COMPLETED",
+          progress: 100,
+        }));
+        eventSource?.close();
+      });
+
+      eventSource.addEventListener("ERROR", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setState((prev) => {
+            if (prev.cards.length > 0) return prev;
+            return {
+              ...prev,
+              status: "FAILED",
+              error: data.message || "Failed to generate memory chain",
+            };
+          });
+        } catch {
+          setState((prev) => {
+            if (prev.cards.length > 0) return prev;
+            return {
+              ...prev,
+              status: "FAILED",
+              error: "Streaming error occurred",
+            };
+          });
+        }
+        eventSource?.close();
+      });
+
+      eventSource.onerror = (err) => {
+        console.warn("EventSource connection notice:", err);
+      };
+    }
+
+    initStream();
+
+    // Fallback polling loop to sync with DB state every 3s
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
     pollIntervalRef.current = setInterval(async () => {
       try {
         const res = await fetch(`${baseUrl}/api/chains/${chainId}`);
@@ -231,12 +244,14 @@ export function useMemoryChainStream(chainId: string | null) {
     }, 3000);
 
     return () => {
-      eventSource.close();
+      if (eventSource) {
+        eventSource.close();
+      }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [chainId]);
+  }, [chainId, getSseTicket]);
 
   const updateCardImage = (cardId: string, imageUrl: string) => {
     setState((prev) => ({

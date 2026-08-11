@@ -7,12 +7,16 @@ export const metadata: Metadata = {
 };
 
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-on-background font-body select-none">
         <div className="paper-grain" />
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

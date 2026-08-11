@@ -3,15 +3,16 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, User, Lock, LogIn, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, UserPlus, Sparkles, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-function LoginForm() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/stories";
 
-  const { login } = useAuth();
+  const { register } = useAuth();
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,17 +22,22 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError("Proszę podać email oraz hasło.");
+    if (!displayName || !email || !password) {
+      setError("Wszystkie pola są wymagane.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Hasło musi mieć co najmniej 6 znaków.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await login(email, password);
+      await register(email, password, displayName);
       router.push(returnUrl);
     } catch (err: any) {
-      setError(err.message || "Błąd podczas logowania. Sprawdź swoje dane.");
+      setError(err.message || "Błąd rejestracji. Podany email może być już zajęty.");
     } finally {
       setIsSubmitting(false);
     }
@@ -39,21 +45,21 @@ function LoginForm() {
 
   return (
     <div className="relative w-full max-w-md mx-auto my-6">
-      <div className="absolute -top-4 left-4 z-20 bg-[#6bff8f] text-[#002109] border-2 border-[#1b1c15] px-4 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#1b1c15] -rotate-2 rounded-md">
-        KONTO UŻYTKOWNIKA
+      <div className="absolute -top-4 left-4 z-20 bg-[#fdc425] text-[#1b1c15] border-2 border-[#1b1c15] px-4 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#1b1c15] -rotate-2 rounded-md">
+        NOWE KONTO
       </div>
 
       <div className="bg-[#ffffff] border-4 border-[#1b1c15] shadow-[10px_10px_0px_0px_#1b1c15] p-6 md:p-8 rounded-2xl space-y-6 rotate-1">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-[#fdc425] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] -rotate-3 text-[#1b1c15]">
+          <div className="p-3 rounded-xl bg-[#6bff8f] border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] -rotate-3 text-[#002109]">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
             <h1 className="font-display text-2xl font-extrabold text-[#1b1c15]">
-              Witaj Ponownie!
+              Dołącz do Memochain
             </h1>
             <p className="font-body text-xs text-[#464554]">
-              Zaloguj się, aby mieć dostęp do historii swoich łańcuchów mnemotechnicznych.
+              Załóż bezpłatne konto i zapamiętuj trudne pojęcia bez wysiłku.
             </p>
           </div>
         </div>
@@ -69,6 +75,21 @@ function LoginForm() {
           <div className="space-y-1.5">
             <label className="font-display text-sm font-bold text-[#1b1c15] flex items-center gap-2">
               <User className="w-4 h-4 text-[#4648d4]" />
+              Imię / Nazwa Użytkownika
+            </label>
+            <input
+              type="text"
+              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Jan Kowalski"
+              className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-3 font-body text-sm text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.06)]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="font-display text-sm font-bold text-[#1b1c15] flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[#00873b]" />
               Adres Email
             </label>
             <input
@@ -83,7 +104,7 @@ function LoginForm() {
 
           <div className="space-y-1.5">
             <label className="font-display text-sm font-bold text-[#1b1c15] flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#00873b]" />
+              <Lock className="w-4 h-4 text-[#fdc425]" />
               Hasło
             </label>
             <input
@@ -91,7 +112,7 @@ function LoginForm() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
+              placeholder="Minimum 6 znaków"
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-3 font-body text-sm text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.06)]"
             />
           </div>
@@ -99,17 +120,17 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 rounded-xl bg-[#fdc425] hover:bg-[#f7be1d] text-[#1b1c15] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn font-display text-lg font-extrabold uppercase flex items-center justify-center gap-2 transition-all cursor-pointer mt-2 disabled:opacity-50"
+            className="w-full py-4 rounded-xl bg-[#6bff8f] hover:bg-[#52ea76] text-[#002109] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn font-display text-lg font-extrabold uppercase flex items-center justify-center gap-2 transition-all cursor-pointer mt-2 disabled:opacity-50"
           >
-            <LogIn className="w-5 h-5 text-[#1b1c15]" />
-            <span>{isSubmitting ? "Logowanie..." : "Zaloguj się"}</span>
+            <UserPlus className="w-5 h-5 text-[#002109]" />
+            <span>{isSubmitting ? "Tworzenie konta..." : "Zarejestruj konto"}</span>
           </button>
         </form>
 
         <div className="text-center font-mono-label text-xs text-[#767586] pt-2 border-t-2 border-[#1b1c15]/10">
-          <span>Nie masz jeszcze konta? </span>
-          <Link href={`/register?returnUrl=${encodeURIComponent(returnUrl)}`} className="font-bold text-[#4648d4] underline">
-            Zarejestruj się tutaj
+          <span>Masz już konto? </span>
+          <Link href={`/login?returnUrl=${encodeURIComponent(returnUrl)}`} className="font-bold text-[#4648d4] underline">
+            Zaloguj się tutaj
           </Link>
         </div>
       </div>
@@ -117,7 +138,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-background text-on-background p-4 md:p-8 max-w-5xl mx-auto space-y-8 relative z-10">
       <header className="flex items-center justify-between py-4 px-6 bg-[#efeee3] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] rounded-2xl -rotate-1">
@@ -130,13 +151,13 @@ export default function LoginPage() {
         </Link>
 
         <div className="flex items-center gap-2 font-display text-xl md:text-2xl font-extrabold text-[#1b1c15]">
-          <User className="w-6 h-6 text-[#4648d4]" />
-          <span>Zaloguj Się</span>
+          <UserPlus className="w-6 h-6 text-[#00873b]" />
+          <span>Rejestracja</span>
         </div>
       </header>
 
       <Suspense fallback={<div className="text-center p-8 font-display">Ładowanie...</div>}>
-        <LoginForm />
+        <RegisterForm />
       </Suspense>
     </main>
   );
