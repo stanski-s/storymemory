@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RecallGym } from "./RecallGym";
 import { StoryCard } from "@/types/chain";
+import { AuthProvider } from "@/context/AuthContext";
 
 const mockCards: StoryCard[] = [
   {
@@ -27,50 +28,31 @@ const mockCards: StoryCard[] = [
 describe("RecallGym Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
-  });
-
-  it("renders step-by-step mode by default and reveals image hint", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        chainId: "chain-1",
-        totalSessions: 0,
-        latestAccuracyScore: null,
-        averageAccuracyScore: null,
-        bestAccuracyScore: null,
-        latestSession: null,
-        latestSessionGaps: [],
-      }),
-    });
-
-    render(<RecallGym chainId="chain-1" cards={mockCards} />);
-
-    expect(screen.getByText(/Step 1 of 2/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Wpisz zapamiętane słowo/i)).toBeInTheDocument();
-
-    // Click Tier 1 image hint button
-    const tier1Button = screen.getByRole("button", { name: /Podpowiedź wizualna/i });
-    fireEvent.click(tier1Button);
-
-    expect(screen.getByAltText(/Podpowiedź do krok 1/i)).toBeInTheDocument();
-  });
-
-  it("submits session and displays accuracy score and memory gaps in summary", async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          chainId: "chain-1",
-          totalSessions: 0,
-          latestAccuracyScore: null,
-          averageAccuracyScore: null,
-          bestAccuracyScore: null,
-          latestSession: null,
-          latestSessionGaps: [],
-        }),
-      })
-      .mockResolvedValueOnce({
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            accessToken: "mock-token",
+            user: { id: "user-1", email: "test@example.com", displayName: "Test User" },
+          }),
+        });
+      }
+      if (url.includes("/recall/summary")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            chainId: "chain-1",
+            totalSessions: 0,
+            latestAccuracyScore: null,
+            averageAccuracyScore: null,
+            bestAccuracyScore: null,
+            latestSession: null,
+            latestSessionGaps: [],
+          }),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: async () => ({
           sessionId: "sess-1",
@@ -95,22 +77,52 @@ describe("RecallGym Component", () => {
           createdAt: new Date().toISOString(),
         }),
       });
+    });
+  });
 
-    render(<RecallGym chainId="chain-1" cards={mockCards} />);
+  it("renders step-by-step mode by default and reveals image hint", async () => {
+    render(
+      <AuthProvider>
+        <RecallGym chainId="chain-1" cards={mockCards} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Step 1 of 2/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Type remembered word/i)).toBeInTheDocument();
+    });
+
+    // Click Tier 1 image hint button
+    const tier1Button = screen.getByRole("button", { name: /Visual Hint/i });
+    fireEvent.click(tier1Button);
+
+    expect(screen.getByAltText(/Visual hint for step 1/i)).toBeInTheDocument();
+  });
+
+  it("submits session and displays accuracy score and memory gaps in summary", async () => {
+    render(
+      <AuthProvider>
+        <RecallGym chainId="chain-1" cards={mockCards} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Type remembered word/i)).toBeInTheDocument();
+    });
 
     // Step 1: type answer and click next
-    const input = screen.getByPlaceholderText(/Wpisz zapamiętane słowo/i);
+    const input = screen.getByPlaceholderText(/Type remembered word/i);
     fireEvent.change(input, { target: { value: "el perro" } });
-    fireEvent.click(screen.getByRole("button", { name: /Następne słowo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Next Word/i }));
 
     // Step 2: type answer and submit
     await waitFor(() => {
       expect(screen.getByText(/Step 2 of 2/i)).toBeInTheDocument();
     });
 
-    const input2 = screen.getByPlaceholderText(/Wpisz zapamiętane słowo/i);
+    const input2 = screen.getByPlaceholderText(/Type remembered word/i);
     fireEvent.change(input2, { target: { value: "el gato" } });
-    fireEvent.click(screen.getByRole("button", { name: /Zakończ i sprawdź wynik/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Finish & Check Results/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/75%/i)).toBeInTheDocument();
@@ -119,26 +131,21 @@ describe("RecallGym Component", () => {
   });
 
   it("switches to CLOZE_STORY mode and renders story segments with blanks", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        chainId: "chain-1",
-        totalSessions: 0,
-        latestAccuracyScore: null,
-        averageAccuracyScore: null,
-        bestAccuracyScore: null,
-        latestSession: null,
-        latestSessionGaps: [],
-      }),
+    render(
+      <AuthProvider>
+        <RecallGym chainId="chain-1" cards={mockCards} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Story Cloze/i })).toBeInTheDocument();
     });
 
-    render(<RecallGym chainId="chain-1" cards={mockCards} />);
-
-    // Click mode switch button for Wypełnianie Historii
-    const clozeButton = screen.getByRole("button", { name: /Wypełnianie Historii/i });
+    // Click mode switch button for Story Cloze
+    const clozeButton = screen.getByRole("button", { name: /Story Cloze/i });
     fireEvent.click(clozeButton);
 
-    expect(screen.getByText(/Tryb Wypełniania Historii/i)).toBeInTheDocument();
+    expect(screen.getByText(/Story Cloze Mode/i)).toBeInTheDocument();
     expect(screen.getAllByPlaceholderText("[ _____ ]")).toHaveLength(2);
   });
 });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChainCreateForm } from "@/components/ChainCreateForm";
 import { Brain, Lightbulb, Compass, Flame, Smile, Layers, BookOpen, User, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ColorfulUserName } from "@/components/ColorfulUserName";
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -35,20 +36,20 @@ export default function Home() {
             className="inline-flex items-center gap-2 font-display text-sm md:text-base font-extrabold text-[#002109] bg-[#6bff8f] hover:bg-[#4ae176] px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-4 border-[#1b1c15] shadow-[5px_5px_0px_0px_#1b1c15] brutal-btn transition-all uppercase tracking-wider cursor-pointer"
           >
             <BookOpen className="w-5 h-5 text-[#00873b]" />
-            <span>Stories</span>
+            <span>My Stories</span>
           </Link>
 
           {user ? (
-            <div className="flex items-center gap-2">
-              <span className="font-display text-sm font-extrabold text-[#1b1c15] hidden sm:inline">
-                {user.displayName}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center bg-[#ffffff] px-4 py-2 rounded-xl border-3 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] -rotate-1 hover:rotate-0 transition-transform">
+                <ColorfulUserName name={user.displayName} />
+              </div>
               <button
                 onClick={logout}
                 className="inline-flex items-center gap-1.5 font-display text-sm font-extrabold text-[#ffffff] bg-[#ff6b6b] hover:bg-[#fa5252] px-3.5 py-2.5 rounded-xl border-4 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] brutal-btn transition-all uppercase tracking-wider cursor-pointer"
               >
                 <LogOut className="w-4 h-4 text-[#ffffff]" />
-                <span className="hidden sm:inline">Wyloguj</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           ) : (
@@ -57,7 +58,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 font-display text-sm md:text-base font-extrabold text-[#ffffff] bg-[#4648d4] hover:bg-[#6063ee] px-4.5 py-2.5 md:px-5.5 md:py-3 rounded-xl border-4 border-[#1b1c15] shadow-[5px_5px_0px_0px_#1b1c15] brutal-btn transition-all uppercase tracking-wider cursor-pointer"
             >
               <User className="w-5 h-5 text-[#fdc425]" />
-              <span>Zaloguj się</span>
+              <span>Sign In</span>
             </Link>
           )}
         </div>
@@ -103,8 +104,9 @@ export default function Home() {
         <ChainCreateForm />
       </section>
 
-      {/* Inspiring Mnemonic Cards Grid */}
+      {/* Inspiring Mnemonic Cards Grid (Different Colors & Wise Quotes) */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+        {/* Card 1: Quote (Yellow) */}
         <div className="relative bg-[#fdc425] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl -rotate-1 hover:rotate-0 transition-transform">
           <div className="absolute -top-4 left-4 bg-[#ffffff] border-2 border-[#1b1c15] px-3 py-1 font-mono-label text-xs font-bold text-[#1b1c15] uppercase tracking-wider shadow-[2px_2px_0px_0px_#1b1c15]">
             💡 WISDOM OF THE DAY
@@ -122,6 +124,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Card 2: Trivia (Cosmic Blue) */}
         <div className="relative bg-[#4648d4] text-[#ffffff] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl rotate-1 hover:rotate-0 transition-transform">
           <div className="absolute -top-4 left-4 bg-[#6bff8f] text-[#002109] border-2 border-[#1b1c15] px-3 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#1b1c15]">
             🔮 VON RESTORFF EFFECT
@@ -132,6 +135,37 @@ export default function Home() {
             </h3>
             <p className="font-body text-xs leading-relaxed opacity-95">
               Psychology proves that unusual, humorous, and high-contrast visuals stick longest. When you link words into a wild narrative, your mind recalls them automatically!
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Encouragement (Warm Parchment / White) */}
+        <div className="relative bg-[#ffffff] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl -rotate-1 hover:rotate-0 transition-transform">
+          <div className="absolute -top-4 left-4 bg-[#4648d4] text-[#ffffff] border-2 border-[#1b1c15] px-3 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#1b1c15]">
+            🌟 STEP BY STEP
+          </div>
+          <div className="space-y-3 pt-2">
+            <h3 className="font-display text-lg font-bold text-[#1b1c15] flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#4648d4]" />
+              Every Word is a New Adventure
+            </h3>
+            <p className="font-body text-xs text-[#464554] leading-relaxed">
+              No rote learning needed. Just close your eyes, immerse in the story, and watch words connect effortlessly in your mind!
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Historical Fact (Slime Green) */}
+        <div className="relative bg-[#6bff8f] text-[#002109] border-4 border-[#1b1c15] shadow-[8px_8px_0px_0px_#1b1c15] p-6 rounded-2xl rotate-1 hover:rotate-0 transition-transform">
+          <div className="absolute -top-4 left-4 bg-[#fdc425] text-[#1b1c15] border-2 border-[#1b1c15] px-3 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_#1b1c15]">
+            🏛️ METHOD OF LOCI
+          </div>
+          <div className="space-y-3 pt-2">
+            <h3 className="font-display text-lg font-bold text-[#002109]">
+              Ancient Greek Mnemonic Art
+            </h3>
+            <p className="font-body text-xs leading-relaxed text-[#003816] font-medium">
+              Sequential story linking (Mnemonic Chains) has over 2,500 years of history. Ancient orators delivered hours of speeches completely by memory without notes!
             </p>
           </div>
         </div>

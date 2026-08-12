@@ -24,6 +24,8 @@ import {
   BookOpen,
 } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+
 interface RecallGymProps {
   chainId: string;
   cards: StoryCard[];
@@ -31,6 +33,7 @@ interface RecallGymProps {
 }
 
 export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
+  const { authenticatedFetch } = useAuth();
   const [mode, setMode] = useState<RecallMode>("STEP_BY_STEP");
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -60,7 +63,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
   const fetchSummary = async () => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/chains/${chainId}/recall/summary`);
+      const res = await authenticatedFetch(`${baseUrl}/api/chains/${chainId}/recall/summary`);
       if (res.ok) {
         const data: RecallSummaryResponse = await res.json();
         setSummary(data);
@@ -111,7 +114,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/chains/${chainId}/recall`, {
+      const res = await authenticatedFetch(`${baseUrl}/api/chains/${chainId}/recall`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, responses: payload }),
@@ -201,7 +204,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
           type="text"
           value={userText}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`[ _____ ] Uzupełnij słowo #${card.sequenceIndex + 1}...`}
+          placeholder={`[ _____ ] Fill in item #${card.sequenceIndex + 1}...`}
           className="comic-input w-full bg-[#f5f4e8] border-3 border-[#1b1c15] p-3 font-body text-base text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.06)]"
         />
       </div>
@@ -232,7 +235,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                   {result.mode === "STEP_BY_STEP"
                     ? "Step-by-Step Review"
                     : result.mode === "CLOZE_STORY"
-                    ? "Wypełnianie Historii (Story Cloze)"
+                    ? "Story Cloze Fill-in"
                     : "Full Form Review"}
                 </span>
               </p>
@@ -436,7 +439,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>Wypełnianie Historii</span>
+              <span>Story Cloze</span>
             </button>
           </div>
         </div>
@@ -482,7 +485,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                 onChange={(e) =>
                   handleTextChange(currentCard.sequenceIndex, e.target.value)
                 }
-                placeholder="Wpisz zapamiętane słowo..."
+                placeholder="Type remembered word..."
                 className="comic-input w-full bg-[#ffffff] border-4 border-[#1b1c15] p-4 font-body text-base text-[#1b1c15] placeholder-[#767586] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_3px_3px_0px_0px_rgba(0,0,0,0.06)]"
               />
 
@@ -498,7 +501,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                   }`}
                 >
                   <Eye className="w-4 h-4 text-[#1b1c15]" />
-                  <span>Podpowiedź wizualna</span>
+                  <span>Visual Hint</span>
                 </button>
 
                 <button
@@ -511,7 +514,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                   }`}
                 >
                   <Volume2 className="w-4 h-4 text-[#1b1c15]" />
-                  <span>Podpowiedź audio/tekst</span>
+                  <span>Audio & Text Hint</span>
                 </button>
               </div>
 
@@ -520,7 +523,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                 <div className="p-4 bg-[#ffffff] border-2 border-[#1b1c15] rounded-xl shadow-[4px_4px_0px_0px_#1b1c15] flex justify-center">
                   <img
                     src={currentCard.imageUrl}
-                    alt={`Podpowiedź do krok ${currentIndex + 1}`}
+                    alt={`Visual hint for step ${currentIndex + 1}`}
                     className="max-h-56 object-contain rounded-lg border-2 border-[#1b1c15]"
                   />
                 </div>
@@ -552,7 +555,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                 className="inline-flex items-center gap-2 font-mono-label text-xs font-bold text-[#1b1c15] bg-[#ffffff] px-4 py-2.5 rounded-xl border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn transition-all disabled:opacity-40 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4 text-[#4648d4]" />
-                <span>Poprzednie</span>
+                <span>Previous</span>
               </button>
 
               {currentIndex < cards.length - 1 ? (
@@ -563,7 +566,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                   }
                   className="inline-flex items-center gap-2 font-mono-label text-xs font-bold text-[#ffffff] bg-[#4648d4] hover:bg-[#3b3dbf] px-5 py-2.5 rounded-xl border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn transition-all cursor-pointer"
                 >
-                  <span>Następne słowo</span>
+                  <span>Next Word</span>
                   <ArrowRight className="w-4 h-4 text-[#ffffff]" />
                 </button>
               ) : (
@@ -574,7 +577,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                   className="inline-flex items-center gap-2 font-display text-base font-extrabold text-[#6d5200] bg-[#fdc425] hover:bg-[#f7be1d] px-6 py-2.5 rounded-xl border-3 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] brutal-btn uppercase transition-all cursor-pointer"
                 >
                   <Check className="w-5 h-5 text-[#1b1c15]" />
-                  <span>{isSubmitting ? "Zapisywanie..." : "Zakończ i sprawdź wynik"}</span>
+                  <span>{isSubmitting ? "Submitting..." : "Finish & Check Results"}</span>
                 </button>
               )}
             </div>
@@ -611,7 +614,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                               : "bg-[#ffffff] text-[#1b1c15]"
                           }`}
                         >
-                          👁️ Podpowiedź 1
+                          👁️ Hint 1 (Visual)
                         </button>
                         <button
                           type="button"
@@ -622,7 +625,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                               : "bg-[#ffffff] text-[#1b1c15]"
                           }`}
                         >
-                          🔊 Podpowiedź 2
+                          🔊 Hint 2 (Story & Audio)
                         </button>
                       </div>
                     </div>
@@ -633,7 +636,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                       onChange={(e) =>
                         handleTextChange(card.sequenceIndex, e.target.value)
                       }
-                      placeholder={`Wpisz zapamiętane słowo #${idx + 1}...`}
+                      placeholder={`Type remembered word #${idx + 1}...`}
                       className="comic-input w-full bg-[#ffffff] border-3 border-[#1b1c15] p-3 font-body text-base text-[#1b1c15] placeholder-[#767586] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.06)]"
                     />
 
@@ -641,7 +644,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                       <div className="p-3 bg-[#ffffff] border-2 border-[#1b1c15] rounded-xl flex justify-center">
                         <img
                           src={card.imageUrl}
-                          alt={`Podpowiedź #${idx + 1}`}
+                          alt={`Hint #${idx + 1}`}
                           className="max-h-40 object-contain rounded border-2 border-[#1b1c15]"
                         />
                       </div>
@@ -673,16 +676,16 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
               className="w-full py-4 px-6 rounded-xl font-display text-xl font-extrabold text-[#6d5200] bg-[#fdc425] hover:bg-[#f7be1d] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn uppercase flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <Check className="w-6 h-6 text-[#1b1c15]" />
-              <span>{isSubmitting ? "Zapisywanie..." : "Prześlij i sprawdź wynik"}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit & Check Results"}</span>
             </button>
           </div>
         )}
 
-        {/* MODE 3: CLOZE STORY (Wypełnianie Historii) */}
+        {/* MODE 3: CLOZE STORY */}
         {mode === "CLOZE_STORY" && (
           <div className="space-y-6">
             <div className="p-4 bg-[#f5f4e8] border-2 border-[#1b1c15] rounded-xl font-mono-label text-xs text-[#464554]">
-              💡 <span className="font-bold text-[#1b1c15]">Tryb Wypełniania Historii:</span> Przeczytaj tekst opowiadania i uzupełnij brakujące słowa kluczowe w lukach.
+              💡 <span className="font-bold text-[#1b1c15]">Story Cloze Mode:</span> Read the story narrative and fill in the missing target keywords in the blanks.
             </div>
 
             <div className="space-y-6">
@@ -712,7 +715,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                               : "bg-[#ffffff] text-[#1b1c15]"
                           }`}
                         >
-                          👁️ Podpowiedź 1
+                          👁️ Hint 1 (Visual)
                         </button>
                         <button
                           type="button"
@@ -723,7 +726,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                               : "bg-[#ffffff] text-[#1b1c15]"
                           }`}
                         >
-                          🔊 Podpowiedź 2
+                          🔊 Hint 2 (Audio)
                         </button>
                       </div>
                     </div>
@@ -737,7 +740,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
                       <div className="p-3 bg-[#ffffff] border-2 border-[#1b1c15] rounded-xl flex justify-center shadow-[3px_3px_0px_0px_#1b1c15]">
                         <img
                           src={card.imageUrl}
-                          alt={`Podpowiedź #${idx + 1}`}
+                          alt={`Hint #${idx + 1}`}
                           className="max-h-48 object-contain rounded border-2 border-[#1b1c15]"
                         />
                       </div>
@@ -766,7 +769,7 @@ export function RecallGym({ chainId, cards, onComplete }: RecallGymProps) {
               className="w-full py-4 px-6 rounded-xl font-display text-xl font-extrabold text-[#6d5200] bg-[#fdc425] hover:bg-[#f7be1d] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn uppercase flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <Check className="w-6 h-6 text-[#1b1c15]" />
-              <span>{isSubmitting ? "Zapisywanie..." : "Prześlij i sprawdź wynik"}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit & Check Results"}</span>
             </button>
           </div>
         )}

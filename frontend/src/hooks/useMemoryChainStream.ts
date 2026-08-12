@@ -15,7 +15,7 @@ export interface StreamState {
 }
 
 export function useMemoryChainStream(chainId: string | null) {
-  const { getSseTicket } = useAuth();
+  const { getSseTicket, authenticatedFetch } = useAuth();
   const [state, setState] = useState<StreamState>({
     status: "IDLE",
     topic: "",
@@ -32,11 +32,74 @@ export function useMemoryChainStream(chainId: string | null) {
     if (!chainId) return;
 
     let eventSource: EventSource | null = null;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+    // 1. Initial authenticated fetch to immediately load existing chain data if already persisted
+    async function loadInitialChainData(): Promise<boolean> {
+      try {
+        const res = await authenticatedFetch(`${baseUrl}/api/chains/${chainId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            const initialCards: StoryCard[] = (data.cards || []).map((c: any) => ({
+              id: c.id,
+              sequenceIndex: c.sequenceIndex,
+              targetItem: c.targetItem,
+              storySegment: c.storySegment,
+              imagePrompt: c.imagePrompt,
+              imageUrl: c.imageUrl || null,
+              audioUrl: c.audioUrl || null,
+            }));
+
+            const isCompleted = data.status === "COMPLETED";
+            const isFailed = data.status === "FAILED";
+
+            setState((prev) => ({
+              ...prev,
+              topic: data.topic || prev.topic,
+              totalItems: data.rawItems ? data.rawItems.length : prev.totalItems,
+              cards: initialCards.length > 0 ? initialCards : prev.cards,
+              status: isCompleted ? "COMPLETED" : isFailed ? "FAILED" : initialCards.length > 0 ? "GENERATING" : "CONNECTING",
+              progress: isCompleted ? 100 : initialCards.length > 0 ? Math.min(100, Math.round((initialCards.length / (data.rawItems?.length || 1)) * 100)) : prev.progress,
+            }));
+            return true;
+          }
+        } else if (res.status === 403) {
+          setState({
+            status: "FAILED",
+            topic: "",
+            totalItems: 0,
+            cards: [],
+            progress: 0,
+            error: "You do not have permission to view this memory chain.",
+            audioError: null,
+          });
+          return false;
+        } else if (res.status === 404) {
+          setState({
+            status: "FAILED",
+            topic: "",
+            totalItems: 0,
+            cards: [],
+            progress: 0,
+            error: "Memory chain not found.",
+            audioError: null,
+          });
+          return false;
+        }
+      } catch (err) {
+        console.warn("Initial chain fetch notice:", err);
+      }
+      return true;
+    }
+
+    // 2. Initialize SSE stream with single-use ticket
     async function initStream() {
-      setState((prev) => ({ ...prev, status: "CONNECTING", error: null, audioError: null }));
+      const isAllowed = await loadInitialChainData();
+      if (!isAllowed) {
+        return; // Access denied or chain not found: stop stream initialization
+      }
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
       let sseUrl = `${baseUrl}/api/chains/${chainId}/stream`;
 
       try {
@@ -55,7 +118,7 @@ export function useMemoryChainStream(chainId: string | null) {
           const data = JSON.parse(event.data);
           setState((prev) => ({
             ...prev,
-            status: "GENERATING",
+            status: prev.status === "COMPLETED" ? "COMPLETED" : "GENERATING",
             topic: data.topic || prev.topic,
             totalItems: data.totalItems || prev.totalItems,
           }));
@@ -74,11 +137,14 @@ export function useMemoryChainStream(chainId: string | null) {
             storySegment: data.storySegment,
             imagePrompt: data.imagePrompt,
             imageUrl: data.imageUrl || null,
+            audioUrl: data.audioUrl || null,
           };
 
           setState((prev) => {
             const existing = prev.cards.find((c) => c.sequenceIndex === newCard.sequenceIndex);
-            const updatedCard = existing ? { ...existing, ...newCard, imageUrl: newCard.imageUrl || existing.imageUrl } : newCard;
+            const updatedCard = existing
+              ? { ...existing, ...newCard, imageUrl: newCard.imageUrl || existing.imageUrl, audioUrl: newCard.audioUrl || existing.audioUrl }
+              : newCard;
             const cards = existing
               ? prev.cards.map((c) => (c.sequenceIndex === newCard.sequenceIndex ? updatedCard : c))
               : [...prev.cards, updatedCard].sort((a, b) => a.sequenceIndex - b.sequenceIndex);
@@ -88,8 +154,8 @@ export function useMemoryChainStream(chainId: string | null) {
             return {
               ...prev,
               cards,
-              progress,
-              status: "GENERATING",
+              progress: prev.status === "COMPLETED" ? 100 : progress,
+              status: prev.status === "COMPLETED" ? "COMPLETED" : "GENERATING",
             };
           });
         } catch (err) {
@@ -176,7 +242,7 @@ export function useMemoryChainStream(chainId: string | null) {
         try {
           const data = JSON.parse(event.data);
           setState((prev) => {
-            if (prev.cards.length > 0) return prev;
+            if (prev.cards.length > 0) return { ...prev, status: "COMPLETED", progress: 100 };
             return {
               ...prev,
               status: "FAILED",
@@ -185,7 +251,7 @@ export function useMemoryChainStream(chainId: string | null) {
           });
         } catch {
           setState((prev) => {
-            if (prev.cards.length > 0) return prev;
+            if (prev.cards.length > 0) return { ...prev, status: "COMPLETED", progress: 100 };
             return {
               ...prev,
               status: "FAILED",
@@ -203,16 +269,15 @@ export function useMemoryChainStream(chainId: string | null) {
 
     initStream();
 
-    // Fallback polling loop to sync with DB state every 3s
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    // 3. Fallback polling loop using authenticatedFetch
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${baseUrl}/api/chains/${chainId}`);
+        const res = await authenticatedFetch(`${baseUrl}/api/chains/${chainId}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.cards && data.cards.length > 0) {
             setState((prev) => {
-              const updatedCards: StoryCard[] = data.cards.map((c: { id: string; sequenceIndex: number; targetItem: string; storySegment: string; imagePrompt: string; imageUrl?: string; audioUrl?: string }) => ({
+              const updatedCards: StoryCard[] = data.cards.map((c: any) => ({
                 id: c.id,
                 sequenceIndex: c.sequenceIndex,
                 targetItem: c.targetItem,
@@ -237,6 +302,17 @@ export function useMemoryChainStream(chainId: string | null) {
               if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             }
           }
+        } else if (res.status === 403 || res.status === 404) {
+          setState({
+            status: "FAILED",
+            topic: "",
+            totalItems: 0,
+            cards: [],
+            progress: 0,
+            error: res.status === 403 ? "You do not have permission to view this memory chain." : "Memory chain not found.",
+            audioError: null,
+          });
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
         }
       } catch (err) {
         console.warn("Fallback polling notice:", err);
@@ -251,7 +327,7 @@ export function useMemoryChainStream(chainId: string | null) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [chainId, getSseTicket]);
+  }, [chainId, getSseTicket, authenticatedFetch]);
 
   const updateCardImage = (cardId: string, imageUrl: string) => {
     setState((prev) => ({

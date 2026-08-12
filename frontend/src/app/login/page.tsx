@@ -22,7 +22,7 @@ function LoginForm() {
     setError(null);
 
     if (!email || !password) {
-      setError("Proszę podać email oraz hasło.");
+      setError("Please enter both email and password.");
       return;
     }
 
@@ -31,7 +31,7 @@ function LoginForm() {
       await login(email, password);
       router.push(returnUrl);
     } catch (err: any) {
-      setError(err.message || "Błąd podczas logowania. Sprawdź swoje dane.");
+      setError(err.message || "Invalid credentials. Please check your details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -40,7 +40,7 @@ function LoginForm() {
   return (
     <div className="relative w-full max-w-md mx-auto my-6">
       <div className="absolute -top-4 left-4 z-20 bg-[#6bff8f] text-[#002109] border-2 border-[#1b1c15] px-4 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#1b1c15] -rotate-2 rounded-md">
-        KONTO UŻYTKOWNIKA
+        ACCOUNT ACCESS
       </div>
 
       <div className="bg-[#ffffff] border-4 border-[#1b1c15] shadow-[10px_10px_0px_0px_#1b1c15] p-6 md:p-8 rounded-2xl space-y-6 rotate-1">
@@ -50,10 +50,10 @@ function LoginForm() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-extrabold text-[#1b1c15]">
-              Witaj Ponownie!
+              Welcome Back
             </h1>
             <p className="font-body text-xs text-[#464554]">
-              Zaloguj się, aby mieć dostęp do historii swoich łańcuchów mnemotechnicznych.
+              Sign in to access your saved mnemonic story chains and recall stats.
             </p>
           </div>
         </div>
@@ -69,14 +69,14 @@ function LoginForm() {
           <div className="space-y-1.5">
             <label className="font-display text-sm font-bold text-[#1b1c15] flex items-center gap-2">
               <User className="w-4 h-4 text-[#4648d4]" />
-              Adres Email
+              Email Address
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="twoj.email@example.com"
+              placeholder="dreamer@memochain.com"
               className="comic-input w-full bg-[#f5f4e8] border-4 border-[#1b1c15] p-3 font-body text-sm text-[#1b1c15] placeholder-[#767586] focus:bg-[#ffffff] focus:border-[#4648d4] focus:outline-none rounded-xl shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.06)]"
             />
           </div>
@@ -84,7 +84,7 @@ function LoginForm() {
           <div className="space-y-1.5">
             <label className="font-display text-sm font-bold text-[#1b1c15] flex items-center gap-2">
               <Lock className="w-4 h-4 text-[#00873b]" />
-              Hasło
+              Password
             </label>
             <input
               type="password"
@@ -102,14 +102,14 @@ function LoginForm() {
             className="w-full py-4 rounded-xl bg-[#fdc425] hover:bg-[#f7be1d] text-[#1b1c15] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn font-display text-lg font-extrabold uppercase flex items-center justify-center gap-2 transition-all cursor-pointer mt-2 disabled:opacity-50"
           >
             <LogIn className="w-5 h-5 text-[#1b1c15]" />
-            <span>{isSubmitting ? "Logowanie..." : "Zaloguj się"}</span>
+            <span>{isSubmitting ? "Signing in..." : "Sign In to Memochain"}</span>
           </button>
         </form>
 
         <div className="text-center font-mono-label text-xs text-[#767586] pt-2 border-t-2 border-[#1b1c15]/10">
-          <span>Nie masz jeszcze konta? </span>
+          <span>Don't have an account? </span>
           <Link href={`/register?returnUrl=${encodeURIComponent(returnUrl)}`} className="font-bold text-[#4648d4] underline">
-            Zarejestruj się tutaj
+            Register here
           </Link>
         </div>
       </div>
@@ -126,16 +126,16 @@ export default function LoginPage() {
           className="inline-flex items-center gap-2 font-display text-sm md:text-base font-extrabold text-[#1b1c15] bg-[#ffffff] hover:bg-[#f5f4e8] px-4.5 py-2.5 md:px-5 md:py-3 rounded-xl border-4 border-[#1b1c15] shadow-[4px_4px_0px_0px_#1b1c15] brutal-btn transition-all uppercase tracking-wider cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-[#4648d4]" />
-          <span>Powrót do Strony Głównej</span>
+          <span>Back to Generator</span>
         </Link>
 
         <div className="flex items-center gap-2 font-display text-xl md:text-2xl font-extrabold text-[#1b1c15]">
           <User className="w-6 h-6 text-[#4648d4]" />
-          <span>Zaloguj Się</span>
+          <span>Sign In</span>
         </div>
       </header>
 
-      <Suspense fallback={<div className="text-center p-8 font-display">Ładowanie...</div>}>
+      <Suspense fallback={<div className="text-center p-8 font-display">Loading...</div>}>
         <LoginForm />
       </Suspense>
     </main>

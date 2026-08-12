@@ -3,12 +3,9 @@
 import { useState } from "react";
 import { useMemoryChainStream } from "@/hooks/useMemoryChainStream";
 import { StoryCardCarousel } from "@/components/StoryCardCarousel";
-import { Sparkles, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, ArrowLeft, LayoutGrid, Layers } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, ArrowLeft, LayoutGrid, Layers, Dumbbell, BookOpen, PlusCircle } from "lucide-react";
 import Link from "next/link";
-
-import { Dumbbell } from "lucide-react";
 import { RecallGym } from "@/components/RecallGym";
-
 import { useAuth } from "@/context/AuthContext";
 
 interface Props {
@@ -40,6 +37,59 @@ export function ChainStreamView({ chainId }: Props) {
       setGeneratingCardId(null);
     }
   };
+
+  // If access is denied, failed, or chain is empty due to error: show Access Restricted Screen ONLY
+  if (stream.status === "FAILED" || (stream.error && stream.cards.length === 0)) {
+    return (
+      <div className="w-full max-w-2xl mx-auto my-8 space-y-6">
+        <Link
+          href="/stories"
+          className="inline-flex items-center gap-2 font-mono-label text-xs font-bold text-[#1b1c15] bg-[#ffffff] px-4 py-2 rounded-xl border-2 border-[#1b1c15] shadow-[3px_3px_0px_0px_#1b1c15] brutal-btn transition-all"
+        >
+          <ArrowLeft className="w-4 h-4 text-[#4648d4]" />
+          <span>Back to My Stories</span>
+        </Link>
+
+        <div className="relative w-full">
+          <div className="absolute -top-4 left-4 z-20 bg-[#ff6b6b] text-[#ffffff] border-2 border-[#1b1c15] px-4 py-1 font-mono-label text-xs font-bold uppercase tracking-wider shadow-[3px_3px_0px_0px_#1b1c15] -rotate-1 rounded-md">
+            ACCESS DENIED
+          </div>
+
+          <div className="bg-[#ffffff] border-4 border-[#1b1c15] shadow-[10px_10px_0px_0px_#1b1c15] p-8 md:p-12 rounded-2xl space-y-6 text-center rotate-1">
+            <div className="w-16 h-16 rounded-2xl bg-[#ffdad6] border-2 border-[#ba1a1a] shadow-[4px_4px_0px_0px_#ba1a1a] flex items-center justify-center text-[#ba1a1a] mx-auto -rotate-3">
+              <AlertCircle className="w-8 h-8 text-[#ba1a1a]" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="font-display text-2xl md:text-3xl font-extrabold text-[#1b1c15]">
+                Access Restricted
+              </h1>
+              <p className="font-body text-sm text-[#464554] max-w-md mx-auto">
+                {stream.error || "You do not have permission to view this memory chain."}
+              </p>
+            </div>
+
+            <div className="pt-4 flex flex-wrap justify-center gap-4">
+              <Link
+                href="/stories"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#4648d4] text-[#ffffff] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn font-display text-base font-bold uppercase transition-all"
+              >
+                <BookOpen className="w-5 h-5 text-[#fdc425]" />
+                <span>Go to My Stories</span>
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#6bff8f] text-[#002109] border-4 border-[#1b1c15] shadow-[6px_6px_0px_0px_#1b1c15] brutal-btn font-display text-base font-bold uppercase transition-all"
+              >
+                <PlusCircle className="w-5 h-5 text-[#00873b]" />
+                <span>Create New Story</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
@@ -104,12 +154,6 @@ export function ChainStreamView({ chainId }: Props) {
               Completed
             </span>
           )}
-          {stream.status === "FAILED" && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono-label text-xs font-bold bg-[#ffdad6] text-[#93000a] border-2 border-[#ba1a1a] shadow-[3px_3px_0px_0px_#ba1a1a]">
-              <AlertCircle className="w-4 h-4 text-[#ba1a1a]" />
-              Error
-            </span>
-          )}
         </div>
       </div>
 
@@ -143,17 +187,6 @@ export function ChainStreamView({ chainId }: Props) {
           </div>
         </div>
       </div>
-
-      {/* Error Alert */}
-      {stream.error && (
-        <div className="p-4 rounded-2xl bg-[#ffdad6] border-4 border-[#ba1a1a] shadow-[6px_6px_0px_0px_#ba1a1a] text-[#93000a] font-body text-sm font-semibold flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-[#ba1a1a] flex-shrink-0" />
-          <div>
-            <p className="font-display font-bold">Generation Failed</p>
-            <p className="font-body text-xs text-[#ba1a1a]">{stream.error}</p>
-          </div>
-        </div>
-      )}
 
       {/* Primary Display: Story Card Carousel or List View */}
       {viewMode === "CAROUSEL" ? (
@@ -244,5 +277,3 @@ export function ChainStreamView({ chainId }: Props) {
     </div>
   );
 }
-
-
