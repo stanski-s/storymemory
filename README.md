@@ -25,41 +25,42 @@ The application leverages generative artificial intelligence (LLM + Text-to-Imag
 
 ## 📸 Application Screenshots
 
-> *Placeholder sections for application screenshots:*
+### 1. Main Landing Page & Dashboard
+_Overview of user memory chains, learning statistics, and quick navigation._
 
-### 1. Memory Chain Creator
-*Form interface for entering learning topics and targeted vocabulary/concepts.*
-
-```markdown
-![Chain Creator](/docs/screenshots/chain-creator.png)
-```
+![Main Landing Page](screenshots/glowna.jpg)
 
 ---
 
-### 2. Multimodal Story Carousel (TikTok / IG Stories Style)
-*Swipeable card player displaying generated AI visual illustrations, narrative text segments, and neural TTS voice narration.*
+### 2. Memory Chain Creator
+_Interactive form for entering target learning items, vocabulary, or concepts to generate a surreal mnemonic chain._
 
-```markdown
-![Story Carousel](/docs/screenshots/story-carousel.png)
-```
+![Chain Creator Form](screenshots/form.jpg)
 
 ---
 
-### 3. Recall Gym & Dynamic Hint Engine
-*Interactive sequential memory retrieval exercise with progressive visual and audio hints.*
+### 3. Multimodal Story Carousel (TikTok / IG Stories Style)
+_Swipeable story cards featuring AI-generated surreal illustrations (`Flux.1-schnell`), narrative mnemonic text, and neural voice narration (`edge-tts`)._
 
-```markdown
-![Recall Gym](/docs/screenshots/recall-gym.png)
-```
+| Card 1: Mnemonic Scene | Card 2: Sequential Link |
+| :---: | :---: |
+| ![Story Card 1](screenshots/generated1.jpg) | ![Story Card 2](screenshots/generated2.jpg) |
 
 ---
 
-### 4. User Analytics Dashboard
-*Personalized user statistics tracking retention accuracy, completed sessions, and identified memory gaps (`MemoryGap`).*
+### 4. Interactive "Recall Gym" & Dynamic Hint Engine
+_Active memory testing where users recall items in sequence. Features forgiving fuzzy matching and progressive visual/narrative hints when stuck._
 
-```markdown
-![User Dashboard](/docs/screenshots/user-dashboard.png)
-```
+| Active Recall Input | Dynamic Hint Reveal |
+| :---: | :---: |
+| ![Recall Gym Exercise](screenshots/recallgym.jpg) | ![Dynamic Hint Reveal](screenshots/hint.jpg) |
+
+---
+
+### 5. Recall Session Results & Analytics
+_Detailed performance summary displaying accuracy percentage, retention breakdown, and identified memory gaps (`MemoryGap`)._
+
+![Recall Session Results](screenshots/results.jpg)
 
 ---
 
@@ -94,6 +95,7 @@ The application leverages generative artificial intelligence (LLM + Text-to-Imag
 ## 🛠️ Technology Stack
 
 ### Backend
+
 - **Language & Framework**: Java 25 (Virtual Threads / Project Loom), Spring Boot 4.1.0
 - **Security**: Spring Security, JJWT, HttpOnly Rotated Refresh Cookies, Bucket4j + Redis Rate Limiting
 - **Database**: PostgreSQL 17 + Flyway Database Migrations
@@ -105,6 +107,7 @@ The application leverages generative artificial intelligence (LLM + Text-to-Imag
   - **TTS**: Python FastAPI Sidecar (`edge-tts`)
 
 ### Frontend
+
 - **Framework**: Next.js 16 (App Router) + React 19
 - **Language**: TypeScript 5
 - **Styling**: Tailwind CSS v4
@@ -156,22 +159,6 @@ sequenceDiagram
 
 ---
 
-## 🔄 Implementation Decisions vs Initial Specification (`SPEC.md`)
-
-During implementation, several technical and architectural refinements were made:
-
-| Architecture Domain | Initial Spec (`SPEC.md`) | Actual Implementation in Code |
-| :--- | :--- | :--- |
-| **Authentication & SSE** | Standard token parameter or unspecified stream auth | **Two-step One-Time SSE Ticket mechanism** (`POST /api/auth/sse-ticket`) preventing JWT access token leaks in HTTP server logs. |
-| **Session Management** | Token storage without explicit rotation details | **Rotated Refresh Tokens** persisted as hashes in DB and stored exclusively in secure `HttpOnly` cookies (`SameSite=Strict`). |
-| **Image Generation** | Generic Spring AI Image Model reference | **Dedicated Cloudflare Workers AI integration** running `Flux.1-schnell` with fallback mechanisms and on-demand image regeneration. |
-| **Speech Synthesis (TTS)** | External API call planned | **Dedicated Python FastAPI sidecar microservice (`edge-tts`)** producing high-quality Microsoft Edge Neural TTS audio. |
-| **Rate Limiting** | Not specified in initial draft | **Bucket4j + Redis integration** implementing token-bucket rate limiting on authentication endpoints to prevent brute-force attacks. |
-| **Recall Evaluation** | Exact string matching | **Fuzzy matching algorithm** (Levenshtein / Jaro-Winkler similarity) to forgive minor typos without penalizing semantic knowledge. |
-| **Anki Exporter** | High priority in initial draft | Focus prioritized on a rich, interactive **web-native application & Recall Gym** with real-time progressive hints. |
-
----
-
 ## 📁 Repository Structure (Monorepo)
 
 ```
@@ -209,6 +196,7 @@ pamiec/
 ## 🚀 Local Quickstart Guide
 
 ### Prerequisites
+
 - **Java 25** (with Virtual Threads enabled)
 - **Node.js 20+** and **npm**
 - **Docker** & **Docker Compose**
@@ -236,7 +224,8 @@ Start PostgreSQL, MinIO Object Storage, and Redis:
 docker-compose up -d
 ```
 
-*Service Endpoints:*
+_Service Endpoints:_
+
 - **PostgreSQL**: `localhost:5433` (Database: `pamiec`, User: `postgres`, Password: `postgres`)
 - **MinIO Console**: `http://localhost:9090` (User: `minioadmin`, Password: `minioadmin`)
 - **Redis**: `localhost:6379`
@@ -285,6 +274,7 @@ Open your browser and navigate to: `http://localhost:3000`.
 ## 📡 API Reference
 
 ### Authentication (`/api/auth`)
+
 - `POST /api/auth/register` – Register a new user account
 - `POST /api/auth/login` – Login and acquire JWT Access Token (sets HttpOnly `refreshToken` cookie)
 - `POST /api/auth/refresh` – Refresh short-lived access token
@@ -293,6 +283,7 @@ Open your browser and navigate to: `http://localhost:3000`.
 - `GET /api/auth/me` – Retrieve current authenticated user profile
 
 ### Memory Chains (`/api/chains`)
+
 - `GET /api/chains` – List all memory chains owned by current user
 - `POST /api/chains` – Create a new memory chain
 - `GET /api/chains/{id}` – Get memory chain details
@@ -300,10 +291,12 @@ Open your browser and navigate to: `http://localhost:3000`.
 - `POST /api/chains/{id}/cards/{cardId}/generate-image` – Trigger image generation/regeneration on demand
 
 ### Recall Gym (`/api/chains/{chainId}/recall`)
+
 - `POST /api/chains/{chainId}/recall` – Submit active recall test answers and evaluate retention score
 - `GET /api/chains/{chainId}/recall/summary` – Get historical recall summary for a chain
 
 ### User Analytics (`/api/users/me`)
+
 - `GET /api/users/me/stats` – Get aggregated user learning statistics
 
 ---
@@ -311,12 +304,14 @@ Open your browser and navigate to: `http://localhost:3000`.
 ## 🧪 Testing
 
 ### Backend Unit & Integration Tests (Spring Boot & JUnit 5)
+
 ```bash
 cd backend
 ./mvnw test
 ```
 
 ### Frontend Tests (Vitest & React Testing Library)
+
 ```bash
 cd frontend
 npm run test
