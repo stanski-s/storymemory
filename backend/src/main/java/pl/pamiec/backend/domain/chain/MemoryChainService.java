@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.StructuredTaskScope;
 
 @Service
 public class MemoryChainService {
@@ -288,13 +287,8 @@ public class MemoryChainService {
         if (totalCards <= 5) {
             return true;
         }
-        if (cardIndex == 0 || cardIndex == totalCards - 1) {
-            return true;
-        }
-        if (totalCards <= 10) {
-            return cardIndex % 2 == 0;
-        }
-        return cardIndex % 3 == 0;
+        int step = (int) Math.ceil((double) totalCards / 5.0);
+        return cardIndex % step == 0;
     }
 
     private Void generateAndSaveImage(UUID chainId, StoryCard card) {

@@ -21,10 +21,10 @@ class KeyframeSelectionTest {
     }
 
     @Test
-    @DisplayName("Medium chain (7 items) should pick every 2nd card plus last card")
+    @DisplayName("Medium chain (7 items) should pick 1st card and every 2nd card (step=2, max 5)")
     void mediumChainKeyframes() {
         int totalCards = 7;
-        // Expected keyframes for 7 items (step=2): 0, 2, 4, 6 (6 is also last)
+        // Expected keyframes for 7 items (step=2): 0, 2, 4, 6 (4 keyframes total)
         assertThat(MemoryChainService.isKeyframe(0, totalCards)).isTrue();
         assertThat(MemoryChainService.isKeyframe(1, totalCards)).isFalse();
         assertThat(MemoryChainService.isKeyframe(2, totalCards)).isTrue();
@@ -35,10 +35,10 @@ class KeyframeSelectionTest {
     }
 
     @Test
-    @DisplayName("Long chain (12 items) should pick every 3rd card plus last card")
+    @DisplayName("Long chain (12 items) should pick 1st card and every 3rd card (step=3, max 5)")
     void longChainKeyframes() {
         int totalCards = 12;
-        // Expected keyframes for 12 items (step=3): 0, 3, 6, 9, 11 (11 is last)
+        // Expected keyframes for 12 items (step=3): 0, 3, 6, 9 (4 keyframes total)
         assertThat(MemoryChainService.isKeyframe(0, totalCards)).isTrue();
         assertThat(MemoryChainService.isKeyframe(1, totalCards)).isFalse();
         assertThat(MemoryChainService.isKeyframe(2, totalCards)).isFalse();
@@ -50,6 +50,28 @@ class KeyframeSelectionTest {
         assertThat(MemoryChainService.isKeyframe(8, totalCards)).isFalse();
         assertThat(MemoryChainService.isKeyframe(9, totalCards)).isTrue();
         assertThat(MemoryChainService.isKeyframe(10, totalCards)).isFalse();
-        assertThat(MemoryChainService.isKeyframe(11, totalCards)).isTrue(); // last card
+        assertThat(MemoryChainService.isKeyframe(11, totalCards)).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {6, 7, 8, 9, 10, 11, 12, 15, 20, 30, 50})
+    @DisplayName("For any chain length > 5, card 0 is keyframe and total keyframes never exceeds 5")
+    void maxFiveKeyframesEnforced(int totalCards) {
+        // Card 0 must always be keyframe
+        assertThat(MemoryChainService.isKeyframe(0, totalCards))
+                .as("1st card (index 0) must always be keyframe")
+                .isTrue();
+
+        int keyframeCount = 0;
+        for (int i = 0; i < totalCards; i++) {
+            if (MemoryChainService.isKeyframe(i, totalCards)) {
+                keyframeCount++;
+            }
+        }
+
+        assertThat(keyframeCount)
+                .as("Total keyframes for chain of size %d should be <= 5", totalCards)
+                .isGreaterThan(0)
+                .isLessThanOrEqualTo(5);
     }
 }

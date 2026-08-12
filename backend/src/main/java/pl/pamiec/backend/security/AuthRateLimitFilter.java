@@ -4,6 +4,7 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
+import io.github.bucket4j.distributed.proxy.ClientSideConfig;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -67,9 +68,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
                 RedisClient redisClient = RedisClient.create(redisUrl);
                 StatefulRedisConnection<byte[], byte[]> connection = redisClient.connect(ByteArrayCodec.INSTANCE);
                 proxyManager = LettuceBasedProxyManager.builderFor(connection)
-                        .withExpirationStrategy(
-                                ExpirationAfterWriteStrategy
-                                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(2)))
+                        .withClientSideConfig(ClientSideConfig.getDefault()
+                                .withExpirationAfterWriteStrategy(
+                                        ExpirationAfterWriteStrategy
+                                                .basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(2))))
                         .build();
                 log.info("Redis rate-limiter connected to {}", redisUrl);
             } catch (Exception e) {
