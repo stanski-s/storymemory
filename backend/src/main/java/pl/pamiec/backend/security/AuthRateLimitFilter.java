@@ -1,10 +1,10 @@
 package pl.pamiec.backend.security;
 
-import com.bucket4j.BucketConfiguration;
-import com.bucket4j.distributed.ExpirationAfterWriteStrategy;
-import com.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.BucketProbe;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.ConsumptionProbe;
+import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
+import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.codec.ByteArrayCodec;
@@ -39,18 +39,45 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             .addLimit(Bandwidth.builder().capacity(5).refillGreedy(5, Duration.ofMinutes(1)).build())
             .build();
 
-    private final LettuceBasedProxyManager<byte[]> proxyManager;
+    private final String redisUrl;
 
-    // Fallback in-memory buckets used only when Redis is unreachable
+    private volatile LettuceBasedProxyManager<byte[]> proxyManager;
+
     private final Map<String, io.github.bucket4j.Bucket> fallbackBuckets = new ConcurrentHashMap<>();
 
-    public AuthRateLimitFilter(@Value("${spring.data.redis.url:redis://localhost:6379}") String redisUrl) {
-        RedisClient redisClient = RedisClient.create(redisUrl);
-        StatefulRedisConnection<byte[], byte[]> connection = redisClient.connect(ByteArrayCodec.INSTANCE);
-        this.proxyManager = LettuceBasedProxyManager.builderFor(connection)
-                .withExpirationStrategy(
-                        ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(2)))
-                .build();
+    public AuthRateLimitFilter(
+            @Value("${spring.data.redis.url:redis://localhost:6379}") String redisUrl) {
+        this.redisUrl = redisUrl;
+    }
+
+    /**
+     * Returns the Redis-backed proxy manager, creating it on first call.
+     * Returns {@code null} if Redis is unavailable so callers fall back to
+     * in-memory.
+     */
+    private LettuceBasedProxyManager<byte[]> getProxyManager() {
+        if (proxyManager != null) {
+            return proxyManager;
+        }
+        synchronized (this) {
+            if (proxyManager != null) {
+                return proxyManager;
+            }
+            try {
+                RedisClient redisClient = RedisClient.create(redisUrl);
+                StatefulRedisConnection<byte[], byte[]> connection = redisClient.connect(ByteArrayCodec.INSTANCE);
+                proxyManager = LettuceBasedProxyManager.builderFor(connection)
+                        .withExpirationStrategy(
+                                ExpirationAfterWriteStrategy
+                                        .basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(2)))
+                        .build();
+                log.info("Redis rate-limiter connected to {}", redisUrl);
+            } catch (Exception e) {
+                log.warn("Redis unavailable at startup for rate limiting ({}), using in-memory fallback",
+                        e.getMessage());
+            }
+        }
+        return proxyManager;
     }
 
     @Override
@@ -76,16 +103,21 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         String bucketKey = (isLogin ? "rl:login:" : "rl:register:") + ip;
         byte[] keyBytes = bucketKey.getBytes();
 
-        BucketProbe probe;
+        io.github.bucket4j.ConsumptionProbe probe;
+        LettuceBasedProxyManager<byte[]> pm = getProxyManager();
         try {
-            probe = proxyManager.builder()
-                    .build(keyBytes, () -> config)
-                    .tryConsumeAndReturnRemaining(1);
+            if (pm != null) {
+                probe = pm.builder()
+                        .build(keyBytes, () -> config)
+                        .tryConsumeAndReturnRemaining(1);
+            } else {
+                throw new IllegalStateException("Redis not available");
+            }
         } catch (Exception e) {
             log.warn("Redis unavailable for rate limiting ({}), falling back to in-memory bucket", e.getMessage());
             probe = fallbackBuckets
                     .computeIfAbsent(bucketKey, k -> io.github.bucket4j.Bucket.builder()
-                            .addLimit(config.getBandwidths().get(0))
+                            .addLimit(config.getBandwidths()[0])
                             .build())
                     .tryConsumeAndReturnRemaining(1);
         }

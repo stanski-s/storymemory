@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -14,8 +15,8 @@ import pl.pamiec.backend.domain.chain.MemoryChain;
 import pl.pamiec.backend.domain.chain.MemoryChainRepository;
 import pl.pamiec.backend.domain.chain.StoryCard;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,7 +44,9 @@ class RecallControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .apply(springSecurity())
+                .build();
         memoryGapRepository.deleteAll();
         recallSessionRepository.deleteAll();
         memoryChainRepository.deleteAll();
@@ -63,6 +66,7 @@ class RecallControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000000")
     @DisplayName("POST /api/chains/{chainId}/recall should evaluate session and return result")
     void shouldEvaluateSessionAndReturnResult() throws Exception {
         String jsonPayload = """
@@ -88,6 +92,7 @@ class RecallControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000000")
     @DisplayName("GET /api/chains/{chainId}/recall/summary should return aggregated recall stats")
     void shouldReturnAggregatedRecallStats() throws Exception {
         String jsonPayload = """

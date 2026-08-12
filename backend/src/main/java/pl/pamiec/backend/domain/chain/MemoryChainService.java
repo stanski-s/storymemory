@@ -176,20 +176,25 @@ public class MemoryChainService {
                 try {
                     int totalCardsCount = createdCards.size();
                     for (StoryCard card : createdCards) {
-                        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+                        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
                             boolean generateImage = isKeyframe(card.getSequenceIndex(), totalCardsCount);
 
-                            var imageTask = generateImage
-                                    ? scope.fork(() -> generateAndSaveImage(chainId, card))
+                            var imageFuture = generateImage
+                                    ? executor.submit(() -> generateAndSaveImage(chainId, card))
                                     : null;
-                            var audioTask = scope.fork(() -> generateAndSaveAudio(chainId, card));
+                            var audioFuture = executor.submit(() -> generateAndSaveAudio(chainId, card));
 
-                            scope.join();
+                            if (imageFuture != null) {
+                                imageFuture.get();
+                            }
+                            if (audioFuture != null) {
+                                audioFuture.get();
+                            }
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             log.warn("Interrupted while generating media for card {}", card.getId());
                         } catch (Exception e) {
-                            log.error("StructuredTaskScope error for card {}: {}", card.getId(), e.getMessage());
+                            log.error("Media generation error for card {}: {}", card.getId(), e.getMessage());
                         }
                     }
                 } finally {
