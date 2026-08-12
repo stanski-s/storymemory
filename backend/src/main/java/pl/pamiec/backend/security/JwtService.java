@@ -22,17 +22,22 @@ public class JwtService {
     private final long accessExpirationMs = 15 * 60 * 1000; // 15 minutes
     private final Map<String, SseTicketInfo> sseTicketStore = new ConcurrentHashMap<>();
 
-    public record SseTicketInfo(UUID userId, Instant expiresAt) {}
+    public record SseTicketInfo(UUID userId, Instant expiresAt) {
+    }
 
-    public JwtService(@Value("${jwt.secret:default-very-secure-jwt-secret-key-that-is-at-least-256-bits-long!}") String secret) {
+    public JwtService(@Value("${jwt.secret:}") String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT secret is not configured! Set the JWT_SECRET environment variable " +
+                            "to a random string of at least 32 characters (256 bits).");
+        }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, Math.min(keyBytes.length, 32));
-            this.secretKey = Keys.hmacShaKeyFor(padded);
-        } else {
-            this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+            throw new IllegalStateException(
+                    "JWT_SECRET is too short (" + keyBytes.length + " bytes). " +
+                            "Minimum required: 32 bytes (256 bits) for HS256.");
         }
+        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateAccessToken(UUID userId, String email) {
@@ -75,7 +80,6 @@ public class JwtService {
                 .getPayload();
     }
 
-    // SSE Ticket generation & single-use validation
     public String createSseTicket(UUID userId) {
         String ticket = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plusSeconds(30);
@@ -85,7 +89,8 @@ public class JwtService {
     }
 
     public UUID consumeSseTicket(String ticket) {
-        if (ticket == null) return null;
+        if (ticket == null)
+            return null;
         SseTicketInfo info = sseTicketStore.remove(ticket);
         if (info == null || info.expiresAt().isBefore(Instant.now())) {
             return null;
