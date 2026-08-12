@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Base64;
 import java.util.Map;
@@ -78,6 +79,10 @@ public class CloudflareWorkersAiImageModel implements ImageGeneratorEngine {
 
     @Override
     public byte[] generateImage(String prompt) {
+        return executeGenerateImage(prompt, true);
+    }
+
+    private byte[] executeGenerateImage(String prompt, boolean allowRetry) {
         if (prompt == null || prompt.isBlank()) {
             log.warn("Empty prompt provided for Cloudflare Workers AI image generation.");
             return new byte[0];
@@ -134,11 +139,26 @@ public class CloudflareWorkersAiImageModel implements ImageGeneratorEngine {
                     return responseBytes;
                 }
             }
+        } catch (RestClientResponseException e) {
+            String errorBody = e.getResponseBodyAsString();
+            if (allowRetry && errorBody != null && (errorBody.contains("NSFW") || errorBody.contains("3030"))) {
+                String sanitizedPrompt = buildSanitizedPrompt(prompt);
+                log.warn("Cloudflare Workers AI rejected prompt due to NSFW safety filter. Retrying with sanitized prompt: '{}'", sanitizedPrompt);
+                return executeGenerateImage(sanitizedPrompt, false);
+            }
+            log.error("Cloudflare Workers AI HTTP error status {}: {}", e.getStatusCode(), errorBody);
         } catch (Exception e) {
             log.error("Failed to generate image via Cloudflare Workers AI: {}", e.getMessage(), e);
         }
 
         return new byte[0];
+    }
+
+    private String buildSanitizedPrompt(String originalPrompt) {
+        String safePrompt = originalPrompt.replaceAll("(?i)\\b(nsfw|naked|nude|sexy|adult|blood|kill|death|weapon|strip|cock|breast|violence|sex)\\b", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return safePrompt + ", wholesome family-friendly cartoon, comic book style, bright vibrant colors";
     }
 
     public String getAccountId() { return accountId; }

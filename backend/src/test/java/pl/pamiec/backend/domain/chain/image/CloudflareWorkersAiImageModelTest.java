@@ -88,4 +88,25 @@ class CloudflareWorkersAiImageModelTest {
         byte[] resultBytes = model.generateImage("   ");
         assertThat(resultBytes).isEmpty();
     }
+
+    @Test
+    void shouldRetryWithSanitizedPromptOnNsfwError() {
+        byte[] binaryImageBytes = new byte[]{9, 8, 7, 6};
+        String nsfwErrorBody = "{\"errors\":[{\"message\":\"AiError: AiError: Input prompt contains NSFW content.\",\"code\":3030}],\"success\":false}";
+
+        // 1st attempt fails with 400 Bad Request (NSFW)
+        mockServer.expect(requestTo("https://api.cloudflare.com/client/v4/accounts/test_acc_123/ai/run/@cf/black-forest-labs/flux-1-schnell"))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withBadRequest().body(nsfwErrorBody).contentType(MediaType.APPLICATION_JSON));
+
+        // 2nd attempt (retry with sanitized prompt) succeeds
+        mockServer.expect(requestTo("https://api.cloudflare.com/client/v4/accounts/test_acc_123/ai/run/@cf/black-forest-labs/flux-1-schnell"))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withSuccess(binaryImageBytes, MediaType.IMAGE_PNG));
+
+        byte[] resultBytes = model.generateImage("some risky NSFW prompt");
+
+        mockServer.verify();
+        assertThat(resultBytes).isEqualTo(binaryImageBytes);
+    }
 }

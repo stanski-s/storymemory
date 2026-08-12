@@ -110,6 +110,7 @@ public class GroqStoryGeneratorEngine implements StoryGeneratorEngine {
                b. MUST explicitly feature the main subject/object ('targetItem') performing the exact visual action and setting from 'storySegment'.
                c. Focus purely on concrete, visible subjects, comic book style, bold outlines, vibrant colors, environment, and physical actions (e.g., "Vivid comic book illustration of a glowing neon dog wearing a giant red sombrero hat floating over a golden desert, graphic novel style").
                d. Do NOT use abstract metaphors or non-visual words like "concept", "symbolism", "memory gap", or "learning".
+               e. MUST be strictly family-friendly, G-rated, safe for work (NSFW-free), and avoid any suggestive, violent, explicit, or sensitive words.
             
             Return ONLY valid JSON matching this exact structure:
             {
