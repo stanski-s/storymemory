@@ -12,12 +12,12 @@ import pl.pamiec.backend.domain.chain.dto.StoryCardDto;
 
 
 import org.springframework.security.core.Authentication;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/chains")
-@CrossOrigin(origins = "*")
 public class MemoryChainController {
 
     private final MemoryChainService chainService;
@@ -30,7 +30,10 @@ public class MemoryChainController {
 
     @GetMapping
     public ResponseEntity<List<MemoryChainDto>> getUserChains(Authentication authentication) {
-        String userId = authentication != null ? authentication.getName() : "00000000-0000-0000-0000-000000000000";
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = authentication.getName();
         List<MemoryChainDto> chains = chainRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(MemoryChainDto::fromEntity)
@@ -39,10 +42,11 @@ public class MemoryChainController {
     }
 
     @PostMapping
-    public ResponseEntity<CreateChainResponse> createChain(@RequestBody CreateChainRequest request, Authentication authentication) {
-        String userId = (authentication != null && authentication.getName() != null)
-                ? authentication.getName()
-                : request.userId();
+    public ResponseEntity<CreateChainResponse> createChain(@RequestBody @Valid CreateChainRequest request, Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String userId = authentication.getName();
         CreateChainRequest userRequest = new CreateChainRequest(userId, request.topic(), request.items());
         CreateChainResponse response = chainService.createChain(userRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -50,12 +54,16 @@ public class MemoryChainController {
 
     @GetMapping("/{id}")
     public ResponseEntity<MemoryChainDto> getChain(@PathVariable("id") UUID id, Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         MemoryChainDto chainDto = chainService.getChain(id);
-        if (authentication != null && authentication.getName() != null) {
-            String currentUserId = authentication.getName();
-            if (chainDto.userId() != null && !chainDto.userId().equals("00000000-0000-0000-0000-000000000000") && !chainDto.userId().equalsIgnoreCase(currentUserId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
+        String currentUserId = authentication.getName();
+        // Allow access only to own chains or legacy anonymous chains (zero UUID)
+        if (chainDto.userId() != null
+                && !chainDto.userId().equals("00000000-0000-0000-0000-000000000000")
+                && !chainDto.userId().equalsIgnoreCase(currentUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(chainDto);
     }
@@ -68,7 +76,19 @@ public class MemoryChainController {
     @PostMapping("/{id}/cards/{cardId}/generate-image")
     public ResponseEntity<StoryCardDto> generateCardImage(
             @PathVariable("id") UUID chainId,
-            @PathVariable("cardId") UUID cardId) {
+            @PathVariable("cardId") UUID cardId,
+            Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        // Verify ownership before triggering AI image generation (prevents IDOR + cost abuse)
+        MemoryChainDto chainDto = chainService.getChain(chainId);
+        String currentUserId = authentication.getName();
+        if (chainDto.userId() != null
+                && !chainDto.userId().equals("00000000-0000-0000-0000-000000000000")
+                && !chainDto.userId().equalsIgnoreCase(currentUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         StoryCardDto updatedCard = chainService.generateCardImageOnDemand(chainId, cardId);
         return ResponseEntity.ok(updatedCard);
     }

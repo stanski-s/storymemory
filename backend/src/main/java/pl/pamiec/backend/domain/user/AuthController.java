@@ -3,11 +3,13 @@ package pl.pamiec.backend.domain.user;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import pl.pamiec.backend.domain.user.dto.*;
 
@@ -20,14 +22,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final boolean secureCookie;
 
-    public AuthController(AuthService authService, UserRepository userRepository) {
+    public AuthController(AuthService authService,
+                          UserRepository userRepository,
+                          @Value("${app.secure-cookie:false}") boolean secureCookie) {
         this.authService = authService;
         this.userRepository = userRepository;
+        this.secureCookie = secureCookie;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request,
+    public ResponseEntity<AuthResponse> register(@RequestBody @jakarta.validation.Valid RegisterRequest request,
                                                 HttpServletRequest servletRequest,
                                                 HttpServletResponse servletResponse) {
         String clientIp = servletRequest.getRemoteAddr();
@@ -39,7 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request,
+    public ResponseEntity<AuthResponse> login(@RequestBody @jakarta.validation.Valid LoginRequest request,
                                              HttpServletRequest servletRequest,
                                              HttpServletResponse servletResponse) {
         String clientIp = servletRequest.getRemoteAddr();
@@ -94,7 +100,7 @@ public class AuthController {
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshTokenValue) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshTokenValue)
                 .httpOnly(true)
-                .secure(false) // set true in HTTPS production environments
+                .secure(secureCookie)
                 .path("/api/auth/refresh")
                 .maxAge(7 * 24 * 3600)
                 .sameSite("Strict")
@@ -105,7 +111,7 @@ public class AuthController {
     private void clearRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(secureCookie)
                 .path("/api/auth/refresh")
                 .maxAge(0)
                 .sameSite("Strict")

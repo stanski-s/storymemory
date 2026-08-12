@@ -2,7 +2,10 @@ package pl.pamiec.backend.domain.chain;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pl.pamiec.backend.domain.chain.dto.*;
@@ -14,6 +17,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.StructuredTaskScope;
 
 @Service
 public class MemoryChainService {
@@ -30,11 +34,11 @@ public class MemoryChainService {
     private final Map<UUID, List<SseEmitter>> emittersMap = new ConcurrentHashMap<>();
 
     public MemoryChainService(MemoryChainRepository chainRepository,
-                               StoryCardRepository cardRepository,
-                               StoryGeneratorEngine storyGeneratorEngine,
-                               ImageGeneratorEngine imageGeneratorEngine,
-                               TtsGeneratorEngine ttsGeneratorEngine,
-                               ObjectStorageService objectStorageService) {
+            StoryCardRepository cardRepository,
+            StoryGeneratorEngine storyGeneratorEngine,
+            ImageGeneratorEngine imageGeneratorEngine,
+            TtsGeneratorEngine ttsGeneratorEngine,
+            ObjectStorageService objectStorageService) {
         this.chainRepository = chainRepository;
         this.cardRepository = cardRepository;
         this.storyGeneratorEngine = storyGeneratorEngine;
@@ -67,32 +71,33 @@ public class MemoryChainService {
         emitter.onTimeout(() -> removeEmitter(chainId, emitter));
         emitter.onError(e -> removeEmitter(chainId, emitter));
 
-        // Replay current state if chain already exists
-        chainRepository.findById(chainId).ifPresent(chain -> {
+        // Replay current state if chain already exists (single JOIN fetch via
+        // @EntityGraph)
+        chainRepository.findWithCardsById(chainId).ifPresent(chain -> {
             try {
                 Map<String, Object> createdData = Map.of(
-                    "chainId", chain.getId(),
-                    "topic", chain.getTopic(),
-                    "totalItems", Arrays.asList(chain.getRawItems().split(",")).size(),
-                    "status", chain.getStatus().name()
-                );
+                        "chainId", chain.getId(),
+                        "topic", chain.getTopic(),
+                        "totalItems", Arrays.asList(chain.getRawItems().split(",")).size(),
+                        "status", chain.getStatus().name());
                 emitter.send(SseEmitter.event().name("CHAIN_CREATED").data(createdData, MediaType.APPLICATION_JSON));
 
                 for (StoryCard card : chain.getCards()) {
                     Map<String, Object> cardData = buildCardEventData(chain.getId(), card);
                     emitter.send(SseEmitter.event().name("CARD_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
                     if (card.getImageUrl() != null && !card.getImageUrl().isBlank()) {
-                        emitter.send(SseEmitter.event().name("CARD_IMAGE_GENERATED").data(cardData, MediaType.APPLICATION_JSON));
+                        emitter.send(SseEmitter.event().name("CARD_IMAGE_GENERATED").data(cardData,
+                                MediaType.APPLICATION_JSON));
                     }
                 }
 
                 if (chain.getStatus() == ChainStatus.COMPLETED) {
                     Map<String, Object> completedData = Map.of(
-                        "chainId", chain.getId(),
-                        "totalCards", chain.getCards().size(),
-                        "status", "COMPLETED"
-                    );
-                    emitter.send(SseEmitter.event().name("CHAIN_COMPLETED").data(completedData, MediaType.APPLICATION_JSON));
+                            "chainId", chain.getId(),
+                            "totalCards", chain.getCards().size(),
+                            "status", "COMPLETED");
+                    emitter.send(
+                            SseEmitter.event().name("CHAIN_COMPLETED").data(completedData, MediaType.APPLICATION_JSON));
                     emitter.complete();
                 }
             } catch (IOException e) {
@@ -104,38 +109,47 @@ public class MemoryChainService {
         return emitter;
     }
 
+    /**
+     * Returns a fully populated MemoryChainDto.
+     * Cached in Redis for 1 hour (TTL configured in AppConfig) — but ONLY for
+     * COMPLETED chains so that in-progress states are never served from cache.
+     */
+    @Cacheable(value = "chains", key = "#chainId", condition = "#result != null && #result.status().name() == 'COMPLETED'")
     public MemoryChainDto getChain(UUID chainId) {
-        MemoryChain chain = chainRepository.findById(chainId)
-            .orElseThrow(() -> new IllegalArgumentException("MemoryChain not found with ID: " + chainId));
+        // findWithCardsById uses @EntityGraph → single LEFT JOIN instead of lazy N+1
+        MemoryChain chain = chainRepository.findWithCardsById(chainId)
+                .orElseThrow(() -> new IllegalArgumentException("MemoryChain not found with ID: " + chainId));
 
         List<String> rawItemsList = Arrays.asList(chain.getRawItems().split(","));
         List<StoryCardDto> cardDtos = chain.getCards().stream()
-            .map(c -> new StoryCardDto(c.getId(), c.getSequenceIndex(), c.getTargetItem(), c.getStorySegment(), c.getImagePrompt(), c.getImageUrl(), c.getAudioUrl()))
-            .toList();
+                .map(c -> new StoryCardDto(c.getId(), c.getSequenceIndex(), c.getTargetItem(), c.getStorySegment(),
+                        c.getImagePrompt(), c.getImageUrl(), c.getAudioUrl()))
+                .toList();
 
-        return new MemoryChainDto(chain.getId(), chain.getUserId(), chain.getTopic(), rawItemsList, chain.getStatus(), chain.getCreatedAt(), cardDtos);
+        return new MemoryChainDto(chain.getId(), chain.getUserId(), chain.getTopic(), rawItemsList, chain.getStatus(),
+                chain.getCreatedAt(), cardDtos);
     }
 
     private void processChainGeneration(UUID chainId, CreateChainRequest request) {
         try {
             emitEvent(chainId, "CHAIN_CREATED", Map.of(
-                "chainId", chainId,
-                "topic", request.topic(),
-                "totalItems", request.items().size(),
-                "status", "GENERATING"
-            ));
+                    "chainId", chainId,
+                    "topic", request.topic(),
+                    "totalItems", request.items().size(),
+                    "status", "GENERATING"));
 
             GeneratedStoryChain generatedChain = storyGeneratorEngine.generateStory(
-                request.topic(), request.items()
-            );
+                    request.topic(), request.items());
 
             MemoryChain chain = chainRepository.findById(chainId).orElseThrow();
             List<StoryCard> createdCards = new ArrayList<>();
 
             if (generatedChain != null && generatedChain.cards() != null) {
-                // Phase 1: Save cards and IMMEDIATELY emit CARD_GENERATED events for instant text UI rendering
+                // Phase 1: Save cards and IMMEDIATELY emit CARD_GENERATED events for instant
+                // text UI rendering
                 for (GeneratedCardSegment seg : generatedChain.cards()) {
-                    StoryCard card = new StoryCard(chain, seg.sequenceIndex(), seg.targetItem(), seg.storySegment(), seg.imagePrompt());
+                    StoryCard card = new StoryCard(chain, seg.sequenceIndex(), seg.targetItem(), seg.storySegment(),
+                            seg.imagePrompt());
                     StoryCard savedCard = cardRepository.save(card);
                     chain.addCard(savedCard);
                     createdCards.add(savedCard);
@@ -149,54 +163,34 @@ public class MemoryChainService {
                     while (!Thread.currentThread().isInterrupted()) {
                         try {
                             Thread.sleep(3000);
-                            emitEvent(chainId, "PING", Map.of("chainId", chainId, "timestamp", System.currentTimeMillis()));
+                            emitEvent(chainId, "PING",
+                                    Map.of("chainId", chainId, "timestamp", System.currentTimeMillis()));
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             break;
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
                     }
                 });
 
                 try {
                     int totalCardsCount = createdCards.size();
                     for (StoryCard card : createdCards) {
-                        // Image generation
-                        if (isKeyframe(card.getSequenceIndex(), totalCardsCount)) {
-                            try {
-                                byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
-                                if (imageBytes != null && imageBytes.length > 0) {
-                                    String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
-                                    if (imageUrl != null && !imageUrl.isBlank()) {
-                                        card.setImageUrl(imageUrl);
-                                        cardRepository.save(card);
-                                        emitEvent(chainId, "CARD_IMAGE_GENERATED", buildCardEventData(chainId, card));
-                                    }
-                                }
-                            } catch (Exception e) {
-                                log.error("Failed image generation for card {}: {}", card.getId(), e.getMessage());
-                            }
-                        }
-                        
-                        // Audio generation
-                        try {
-                            byte[] audioBytes = ttsGeneratorEngine.generateSpeech(card.getStorySegment());
-                            if (audioBytes != null && audioBytes.length > 0) {
-                                String audioUrl = objectStorageService.uploadAudio(card.getId(), audioBytes, "audio/mpeg");
-                                if (audioUrl != null && !audioUrl.isBlank()) {
-                                    card.setAudioUrl(audioUrl);
-                                    cardRepository.save(card);
-                                    emitEvent(chainId, "CARD_AUDIO_GENERATED", buildCardEventData(chainId, card));
-                                } else {
-                                    emitAudioFailedEvent(chainId, card);
-                                }
-                            } else {
-                                emitAudioFailedEvent(chainId, card);
-                            }
-                        } catch (Exception e) {
-                            log.error("Failed audio generation for card {}: {}", card.getId(), e.getMessage());
-                            emitAudioFailedEvent(chainId, card);
-                        }
+                        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+                            boolean generateImage = isKeyframe(card.getSequenceIndex(), totalCardsCount);
 
+                            var imageTask = generateImage
+                                    ? scope.fork(() -> generateAndSaveImage(chainId, card))
+                                    : null;
+                            var audioTask = scope.fork(() -> generateAndSaveAudio(chainId, card));
+
+                            scope.join();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            log.warn("Interrupted while generating media for card {}", card.getId());
+                        } catch (Exception e) {
+                            log.error("StructuredTaskScope error for card {}: {}", card.getId(), e.getMessage());
+                        }
                     }
                 } finally {
                     heartbeatThread.interrupt();
@@ -205,12 +199,12 @@ public class MemoryChainService {
 
             chain.setStatus(ChainStatus.COMPLETED);
             chainRepository.save(chain);
+            evictChainCache(chainId);
 
             emitEvent(chainId, "CHAIN_COMPLETED", Map.of(
-                "chainId", chainId,
-                "totalCards", createdCards.size(),
-                "status", "COMPLETED"
-            ));
+                    "chainId", chainId,
+                    "totalCards", createdCards.size(),
+                    "status", "COMPLETED"));
 
             completeEmitters(chainId);
 
@@ -220,6 +214,7 @@ public class MemoryChainService {
                 c.setStatus(ChainStatus.FAILED);
                 chainRepository.save(c);
             });
+            evictChainCache(chainId);
             emitEvent(chainId, "ERROR", Map.of("chainId", chainId, "message", e.getMessage()));
             completeEmitters(chainId);
         }
@@ -242,6 +237,11 @@ public class MemoryChainService {
         return cardData;
     }
 
+    @CacheEvict(value = "chains", key = "#chainId")
+    public void evictChainCache(UUID chainId) {
+        log.debug("Cache evicted for chain {}", chainId);
+    }
+
     private void emitAudioFailedEvent(UUID chainId, StoryCard card) {
         Map<String, Object> data = new HashMap<>();
         data.put("chainId", chainId);
@@ -253,7 +253,8 @@ public class MemoryChainService {
 
     private void emitEvent(UUID chainId, String eventName, Object data) {
         List<SseEmitter> emitters = emittersMap.get(chainId);
-        if (emitters == null || emitters.isEmpty()) return;
+        if (emitters == null || emitters.isEmpty())
+            return;
 
         List<SseEmitter> deadEmitters = new ArrayList<>();
         for (SseEmitter emitter : emitters) {
@@ -272,7 +273,8 @@ public class MemoryChainService {
             for (SseEmitter emitter : emitters) {
                 try {
                     emitter.complete();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
@@ -290,9 +292,64 @@ public class MemoryChainService {
         return cardIndex % 3 == 0;
     }
 
+    private Void generateAndSaveImage(UUID chainId, StoryCard card) {
+        try {
+            byte[] imageBytes = imageGeneratorEngine.generateImage(card.getImagePrompt());
+            if (imageBytes != null && imageBytes.length > 0) {
+                String imageUrl = objectStorageService.uploadImage(card.getId(), imageBytes, "image/png");
+                if (imageUrl != null && !imageUrl.isBlank()) {
+                    card.setImageUrl(imageUrl);
+                    cardRepository.save(card);
+                    emitEvent(chainId, "CARD_IMAGE_GENERATED", buildCardEventData(chainId, card));
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed image generation for card {}: {}", card.getId(), e.getMessage());
+        }
+        return null;
+    }
+
+    private Void generateAndSaveAudio(UUID chainId, StoryCard card) {
+        try {
+            byte[] audioBytes = ttsGeneratorEngine.generateSpeech(card.getStorySegment());
+            if (audioBytes != null && audioBytes.length > 0) {
+                String audioUrl = objectStorageService.uploadAudio(card.getId(), audioBytes, "audio/mpeg");
+                if (audioUrl != null && !audioUrl.isBlank()) {
+                    card.setAudioUrl(audioUrl);
+                    cardRepository.save(card);
+                    emitEvent(chainId, "CARD_AUDIO_GENERATED", buildCardEventData(chainId, card));
+                    return null;
+                }
+            }
+            emitAudioFailedEvent(chainId, card);
+        } catch (Exception e) {
+            log.error("Failed audio generation for card {}: {}", card.getId(), e.getMessage());
+            emitAudioFailedEvent(chainId, card);
+        }
+        return null;
+    }
+
+    @Scheduled(fixedDelay = 300_000)
+    void purgeStaleEmitters() {
+        emittersMap.forEach((chainId, emitters) -> {
+            emitters.removeIf(emitter -> {
+                try {
+                    emitter.send(SseEmitter.event().comment("keepalive"));
+                    return false;
+                } catch (Exception e) {
+                    return true; // dead — remove
+                }
+            });
+            if (emitters.isEmpty()) {
+                emittersMap.remove(chainId);
+            }
+        });
+        log.debug("Stale-emitter purge complete. Active chains in map: {}", emittersMap.size());
+    }
+
     public StoryCardDto generateCardImageOnDemand(UUID chainId, UUID cardId) {
         StoryCard card = cardRepository.findById(cardId)
-            .orElseThrow(() -> new IllegalArgumentException("StoryCard not found with ID: " + cardId));
+                .orElseThrow(() -> new IllegalArgumentException("StoryCard not found with ID: " + cardId));
 
         if (!card.getChain().getId().equals(chainId)) {
             throw new IllegalArgumentException("Card ID " + cardId + " does not belong to chain " + chainId);
@@ -311,7 +368,8 @@ public class MemoryChainService {
             }
         }
 
-        return new StoryCardDto(card.getId(), card.getSequenceIndex(), card.getTargetItem(), card.getStorySegment(), card.getImagePrompt(), card.getImageUrl(), card.getAudioUrl());
+        return new StoryCardDto(card.getId(), card.getSequenceIndex(), card.getTargetItem(), card.getStorySegment(),
+                card.getImagePrompt(), card.getImageUrl(), card.getAudioUrl());
     }
 
     private void removeEmitter(UUID chainId, SseEmitter emitter) {
